@@ -1,7 +1,7 @@
 # no project(): nested projects reset PROJECT_SOURCE_DIR / PROJECT_NAME
 
 add_executable(${TESTS_EXECUTABLE_NAME}
-    exemplu_test.cpp
+    test_request.cpp
 )
 
 target_link_libraries(${TESTS_EXECUTABLE_NAME} PRIVATE ${MAIN_LIBRARY_NAME})

@@ -69,7 +69,7 @@ add_executable(${MAIN_EXECUTABLE_NAME}
 )
 target_sources(${MAIN_LIBRARY_NAME}
     PRIVATE
-        src/Example.cpp
+        src/request.cpp
         src/internal/Detail.cpp
 )
 
