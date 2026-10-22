@@ -1,4 +1,9 @@
-# Nu primesc notă pentru că nu am pus titlu și descriere
+# InfraLab
+
+InfraLab is a standalone cloud infrastructure simulator built in C++. 
+It models how incoming requests are distributed across servers, queued, and processed according to available capacity. 
+Infrastructure and traffic scenarios are defined in configuration files. 
+Simulation reports provide waiting times, response times, and completed request counts, helping users identify bottlenecks and compare server configurations.
 
 ### Folosiți template-ul corespunzător grupei voastre!
 
