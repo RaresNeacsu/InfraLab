@@ -18,19 +18,19 @@ Request::Request(int id, float arrivalTime, int workUnit) : id(id), arrivalTime(
     }
 }
 
-void Request::start(float startTime)
+void Request::start(float requestStartTime)
 {
-    if(startTime < 0.0f || std::isnan(startTime)|| std::isinf(startTime))
+    if(requestStartTime < 0.0f || std::isnan(requestStartTime)|| std::isinf(requestStartTime))
     {
         throw std::invalid_argument("Start time must be a valid non-negative float.");
     }
     if(state == State::PENDING)
     {
-        if(startTime < arrivalTime)
+        if(requestStartTime < arrivalTime)
         {
             throw std::invalid_argument("Start time cannot be before arrival time.");
         }
-        this->startTime = startTime;
+        this->startTime = requestStartTime;
         state = State::IN_PROGRESS;
     }
     else
@@ -38,20 +38,20 @@ void Request::start(float startTime)
         throw std::invalid_argument("Request can only be started if it is in PENDING state.");
     }
 }
-void Request::complete(float finishTime)
+void Request::complete(float requestFinishTime)
 {
-    if(finishTime < 0.0f || std::isnan(finishTime) || std::isinf(finishTime))
+    if(requestFinishTime < 0.0f || std::isnan(requestFinishTime) || std::isinf(requestFinishTime))
     {
         throw std::invalid_argument("Finish time must be a valid non-negative float.");
     }
     if(state == State::IN_PROGRESS)
     {
-        if(finishTime <= startTime)
+        if(requestFinishTime <= startTime)
         {
             throw std::invalid_argument("Finish time must be after start time.");
         }
         state = State::COMPLETED;
-        this->finishTime = finishTime;  
+        this->finishTime = requestFinishTime;  
     }
     else
     {

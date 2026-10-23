@@ -311,7 +311,6 @@ int main()
 
     // test reject() method ///////////////////////////////////////////
     Request r19(1, 5.0f, 10);
-    caught = false;
     try
     {
         r19.reject();

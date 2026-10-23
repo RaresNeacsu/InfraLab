@@ -12,8 +12,8 @@ public:
         REJECTED
     };
     Request(int id, float arrivalTime, int workUnit);
-    void start(float startTime);
-    void complete(float finishTime);
+    void start(float requestStartTime);
+    void complete(float requestFinishTime);
     void reject();
     float waitingTime() const;
     float responseTime() const;
