@@ -9,7 +9,7 @@ class Server{
         void removeWaitingRequestQueue();
         void removeRequestActive();
         void addRequestActive(Request waitingRequest,float currentTime);
-        void showRequests(std::ostream& os, const std::queue<Request>& queue) const;
+        static void showRequests(std::ostream& os, const std::queue<Request>& queue);
     public: 
         Server(int id, float processingSpeed, int waitingQueueLimit, int capacity);
         ~Server() = default;

@@ -137,7 +137,7 @@ void Server::completeActiveRequest(float currentTime)
     }
 }
 
-void Server::showRequests(std::ostream& os, const std::queue<Request>& queue) const
+void Server::showRequests(std::ostream& os, const std::queue<Request>& queue)
 {
     std::queue<Request> tempQueue = queue; 
     while (!tempQueue.empty())
