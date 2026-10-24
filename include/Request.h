@@ -17,6 +17,12 @@ public:
     void reject();
     float waitingTime() const;
     float responseTime() const;
+    int getId() const { return id; }
+    int getWorkUnit() const { return workUnit; }
+    Request::State getState() const { return state; }
+    float getStartTime() const { return startTime; }
+    float getArrivalTime() const { return arrivalTime; }
+    ~Request() = default;
     friend std::ostream& operator<<(std::ostream& os, const Request& request);
 private:
 
