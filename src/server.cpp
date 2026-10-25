@@ -4,6 +4,9 @@
 #include <utility>
 #include <ostream>
 #include <vector>
+#include <limits>
+
+
 Server::Server(int id, float processingSpeed, int waitingQueueLimit, int capacity) : 
     id(id), processingSpeed(processingSpeed),waitingQueueLimit(waitingQueueLimit),capacity(capacity)
 {
@@ -135,6 +138,27 @@ void Server::completeActiveRequest(float currentTime)
         }
         activeRequests = std::move(tempQueue);
     }
+}
+
+float Server::nextCompletionTime() const
+{
+    if(activeRequests.empty())
+    {
+        return std::numeric_limits<float>::infinity();
+    }
+    float nextCompletion = std::numeric_limits<float>::infinity();
+    std::queue<Request> tempQueue = activeRequests; 
+    while(!tempQueue.empty())
+    {
+        const Request& activeRequest = tempQueue.front();
+        float scheduledFinishTime = activeRequest.getStartTime() + (activeRequest.getWorkUnit() / processingSpeed);
+        if(scheduledFinishTime < nextCompletion)
+        {
+            nextCompletion = scheduledFinishTime;
+        }
+        tempQueue.pop();
+    }
+    return nextCompletion;
 }
 
 void Server::showRequests(std::ostream& os, const std::queue<Request>& queue)

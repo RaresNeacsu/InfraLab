@@ -17,12 +17,15 @@ class Server{
         int getCapacity() const { return capacity; }
         float getProcessingSpeed() const { return processingSpeed; }
         int getWaitingQueueLimit() const { return waitingQueueLimit; }
-        bool submitRequest(Request waitingRequest,float currentTime);
-        void waitingQueueToActive(float currentTime);
-        void completeActiveRequest(float currentTime);
         int getWaitingQueueSize() const { return waitingRequests.size(); }
         int getActiveQueueSize() const { return activeRequests.size(); }
         int getCompletedQueueSize() const { return completedRequests.size(); }
+
+        bool submitRequest(Request waitingRequest,float currentTime);
+        void waitingQueueToActive(float currentTime);
+        void completeActiveRequest(float currentTime);
+        float nextCompletionTime() const;
+        
         friend std::ostream& operator<<(std::ostream& os, const Server& server);
 
         void collectCompletedRequests(std::vector<Request>& completedQueue);

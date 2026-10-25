@@ -530,4 +530,45 @@ void testServer()
     assert(emptyCompleted.size() == 1 && emptyCompleted[0].getId() == 30);
     assert(emptyCompleted[0].getState() == Request::State::COMPLETED);
     assert(emptyCompleted[0].responseTime() == 1.0f);
+
+    // test nextCompletionTime() ///////////////////////////////////////////
+    Server completionQuery(15, 2.0f, 1, 2);
+    const Server& query = completionQuery;
+    assert(query.nextCompletionTime() == std::numeric_limits<float>::infinity() &&
+           "Idle server must return positive infinity");
+
+    Request longer(40, 5.0f, 5);
+    accepted = completionQuery.submitRequest(longer, 5.0f);
+    assert(accepted);
+    assert(query.nextCompletionTime() == 7.5f &&
+           "Start 5 plus work 5 divided by speed 2 must finish at 7.5");
+
+    Request shorter(41, 5.0f, 2);
+    accepted = completionQuery.submitRequest(shorter, 5.0f);
+    assert(accepted);
+    Request stillWaiting(42, 5.0f, 1);
+    accepted = completionQuery.submitRequest(stillWaiting, 5.0f);
+    assert(accepted);
+    assert(query.getActiveQueueSize() == 2);
+    assert(query.getWaitingQueueSize() == 1);
+    assert(query.getCompletedQueueSize() == 0);
+    assert(query.nextCompletionTime() == 6.0f &&
+           "The shorter Request must determine the next completion despite being inserted second");
+    assert(query.nextCompletionTime() == 6.0f &&
+           "Repeated queries must return the same time");
+    assert(query.getActiveQueueSize() == 2 && "Query must not consume active Requests");
+    assert(query.getWaitingQueueSize() == 1 && "Query must not start waiting Requests");
+    assert(query.getCompletedQueueSize() == 0 && "Query must not complete Requests");
+
+    completionQuery.completeActiveRequest(6.0f);
+    assert(query.getActiveQueueSize() == 1);
+    assert(query.getCompletedQueueSize() == 1);
+    assert(query.nextCompletionTime() == 7.5f &&
+           "After the earliest completion the remaining Request must determine the next time");
+    completionQuery.completeActiveRequest(7.5f);
+    assert(query.getActiveQueueSize() == 0);
+    assert(query.getCompletedQueueSize() == 2);
+    assert(query.getWaitingQueueSize() == 1);
+    assert(query.nextCompletionTime() == std::numeric_limits<float>::infinity() &&
+           "With no active Requests the result must be positive infinity, even with waiting Requests");
 }
