@@ -4,6 +4,8 @@ add_executable(${TESTS_EXECUTABLE_NAME}
     test.cpp
     test_request.cpp
     test_server.cpp
+    test_simulationReport.cpp
+    test_simulation.cpp
 )
 
 target_link_libraries(${TESTS_EXECUTABLE_NAME} PRIVATE ${MAIN_LIBRARY_NAME})
