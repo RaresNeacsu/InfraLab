@@ -345,7 +345,7 @@ void testServer()
     assert(&returnedStream == &emptyOutput);
     const std::string emptyText =
         "Server ID: 10 | Processing Speed: 2.5 workunits/sec per request\n"
-        "Waiting (0/3) \nActive (0/2) \nCompleted (0) \n";
+        "Waiting (0/3)\n    (none)\nActive (0/2)\n    (none)\nCompleted (0)\n    (none)\n";
     assert(emptyOutput.str() == emptyText);
     returnedStream << "end";
     assert(emptyOutput.str() == emptyText + "end");
@@ -380,9 +380,9 @@ void testServer()
     beforeOutput << constReport;
     const std::string beforeText =
         "Server ID: 12 | Processing Speed: 2 workunits/sec per request\n"
-        "Waiting (1/2)  | Request ID : 22| Arrival Time 1.5| Work Unit: 1| State: PENDING\n"
-        "Active (1/1)  | Request ID : 21| Arrival Time 1| Work Unit: 4| State: IN_PROGRESS"
-        "| Start Time: 1.5| Waiting Time: 0.5\nCompleted (0) \n";
+        "Waiting (1/2)\n    Request #22 | Arrival: 1.5 s | Work units: 1 | State: PENDING\n"
+        "Active (1/1)\n    Request #21 | Arrival: 1 s | Work units: 4 | State: IN_PROGRESS"
+        "\n    Start: 1.5 s | Waiting: 0.5 s\nCompleted (0)\n    (none)\n";
     assert(beforeOutput.str() == beforeText);
     std::ostringstream repeatedOutput;
     repeatedOutput << constReport;
@@ -392,10 +392,10 @@ void testServer()
     lateOutput << constReport;
     const std::string lateText =
         "Server ID: 12 | Processing Speed: 2 workunits/sec per request\n"
-        "Waiting (1/2)  | Request ID : 22| Arrival Time 1.5| Work Unit: 1| State: PENDING\n"
-        "Active (0/1) \n"
-        "Completed (1)  | Request ID : 21| Arrival Time 1| Work Unit: 4| State: COMPLETED"
-        "| Start Time: 1.5| Finish Time: 3.5| Waiting Time: 0.5| Response Time: 2.5\n";
+        "Waiting (1/2)\n    Request #22 | Arrival: 1.5 s | Work units: 1 | State: PENDING\n"
+        "Active (0/1)\n    (none)\n"
+        "Completed (1)\n    Request #21 | Arrival: 1 s | Work units: 4 | State: COMPLETED"
+        "\n    Start: 1.5 s | Finish: 3.5 s | Waiting: 0.5 s | Response: 2.5 s\n";
     assert(lateOutput.str() == lateText && "Late update must preserve scheduled completion, not observation time");
     report.waitingQueueToActive(10.0f);
     report.completeActiveRequest(10.5f);
@@ -404,7 +404,7 @@ void testServer()
     assert(report.getActiveQueueSize() == 0);
     std::ostringstream finalOutput;
     finalOutput << constReport;
-    assert(finalOutput.str().find("| Start Time: 10| Finish Time: 10.5| Waiting Time: 8.5| Response Time: 9") != std::string::npos);
+    assert(finalOutput.str().find("\n    Start: 10 s | Finish: 10.5 s | Waiting: 8.5 s | Response: 9 s") != std::string::npos);
     assert(done.getState() == Request::State::PENDING);
     assert(waiting.getState() == Request::State::PENDING);
     std::ostringstream chainedOutput;
@@ -571,4 +571,129 @@ void testServer()
     assert(query.getWaitingQueueSize() == 1);
     assert(query.nextCompletionTime() == std::numeric_limits<float>::infinity() &&
            "With no active Requests the result must be positive infinity, even with waiting Requests");
+
+    // test operator= - populated servers and replacement of old state ///////////////////////////////////////////
+    Server assignmentSource(70, 2.0f, 1, 2);
+    accepted = assignmentSource.submitRequest(Request(70, 0.0f, 8), 0.0f);
+    assert(accepted);
+    accepted = assignmentSource.submitRequest(Request(71, 0.0f, 1), 0.0f);
+    assert(accepted);
+    accepted = assignmentSource.submitRequest(Request(72, 0.0f, 2), 0.0f);
+    assert(accepted);
+    accepted = assignmentSource.submitRequest(Request(73, 0.0f, 1), 0.0f);
+    assert(!accepted);
+    assignmentSource.completeActiveRequest(0.5f);
+    // Source now has one active, one waiting, one completed and one rejected.
+    Server assignmentTarget(80, 1.0f, 1, 1);
+    accepted = assignmentTarget.submitRequest(Request(80, 0.0f, 1), 0.0f);
+    assert(accepted);
+    accepted = assignmentTarget.submitRequest(Request(81, 0.0f, 2), 0.0f);
+    assert(accepted);
+    accepted = assignmentTarget.submitRequest(Request(82, 0.0f, 1), 0.0f);
+    assert(!accepted);
+    assignmentTarget.completeActiveRequest(1.0f);
+    const Server& sourceView = assignmentSource;
+    const Server& assignmentResult = (assignmentTarget = sourceView);
+    assert(&assignmentResult == &assignmentTarget && "Assignment must return the destination by reference");
+    assert(assignmentTarget.getId() == 70);
+    assert(assignmentTarget.getProcessingSpeed() == 2.0f);
+    assert(assignmentTarget.getCapacity() == 2);
+    assert(assignmentTarget.getWaitingQueueLimit() == 1);
+    assert(assignmentTarget.getWaitingQueueSize() == 1);
+    assert(assignmentTarget.getActiveQueueSize() == 1);
+    assert(assignmentTarget.getCompletedQueueSize() == 1);
+    assert(assignmentTarget.nextCompletionTime() == 4.0f);
+    std::ostringstream sourceBeforeAssignment;
+    sourceBeforeAssignment << sourceView;
+    std::ostringstream targetAfterAssignment;
+    targetAfterAssignment << assignmentTarget;
+    assert(targetAfterAssignment.str() == sourceBeforeAssignment.str());
+
+    // test operator= - self assignment and chaining ///////////////////////////////////////////
+    const Server& selfAlias = assignmentTarget;
+    const Server& selfResult = (assignmentTarget = selfAlias);
+    assert(&selfResult == &assignmentTarget);
+    std::ostringstream afterSelfAssignment;
+    afterSelfAssignment << assignmentTarget;
+    assert(afterSelfAssignment.str() == targetAfterAssignment.str());
+    Server chainFirst(90, 1.0f, 0, 1);
+    Server chainSecond(91, 3.0f, 0, 1);
+    chainFirst = chainSecond = sourceView;
+    std::ostringstream chainFirstOutput;
+    std::ostringstream chainSecondOutput;
+    chainFirstOutput << chainFirst;
+    chainSecondOutput << chainSecond;
+    assert(chainFirstOutput.str() == sourceBeforeAssignment.str());
+    assert(chainSecondOutput.str() == sourceBeforeAssignment.str());
+
+    // test operator= - independent copied histories and future processing ///////////////////////////////////////////
+    std::vector<Request> targetCompleted;
+    std::vector<Request> targetRejected;
+    assignmentTarget.collectCompletedRequests(targetCompleted);
+    assignmentTarget.collectRejectedRequests(targetRejected);
+    assert(targetCompleted.size() == 1 && targetCompleted[0].getId() == 71);
+    assert(targetCompleted[0].responseTime() == 0.5f);
+    assert(targetRejected.size() == 1 && targetRejected[0].getId() == 73);
+    assert(targetRejected[0].getState() == Request::State::REJECTED);
+    assert(assignmentSource.getCompletedQueueSize() == 1);
+    assignmentTarget.waitingQueueToActive(1.0f);
+    assert(assignmentTarget.getWaitingQueueSize() == 0);
+    assert(assignmentTarget.getActiveQueueSize() == 2);
+    assert(assignmentSource.getWaitingQueueSize() == 1);
+    assert(assignmentSource.getActiveQueueSize() == 1);
+    assignmentTarget.completeActiveRequest(4.0f);
+    assignmentTarget.collectCompletedRequests(targetCompleted);
+    assert(targetCompleted.size() == 3);
+    assert(targetCompleted[1].getId() == 70);
+    assert(targetCompleted[1].responseTime() == 4.0f);
+    assert(targetCompleted[2].getId() == 72);
+    assert(targetCompleted[2].waitingTime() == 1.0f);
+    assert(targetCompleted[2].responseTime() == 2.0f);
+    std::ostringstream unchangedSource;
+    unchangedSource << sourceView;
+    assert(unchangedSource.str() == sourceBeforeAssignment.str());
+    std::vector<Request> sourceRejected;
+    assignmentSource.collectRejectedRequests(sourceRejected);
+    assert(sourceRejected.size() == 1 && sourceRejected[0].getId() == 73 &&
+           "Collecting the copy must not drain the source rejection history");
+    assignmentTarget.collectRejectedRequests(targetRejected);
+    assert(targetRejected.size() == 1 && "Copied rejected history must be drained independently");
+
+    // test operator= - empty source clears every destination queue ///////////////////////////////////////////
+    const Server emptyAssignmentSource(92, 3.5f, 0, 1);
+    chainFirst = emptyAssignmentSource;
+    assert(chainFirst.getId() == 92);
+    assert(chainFirst.getProcessingSpeed() == 3.5f);
+    assert(chainFirst.getCapacity() == 1);
+    assert(chainFirst.getWaitingQueueLimit() == 0);
+    assert(chainFirst.getWaitingQueueSize() == 0);
+    assert(chainFirst.getActiveQueueSize() == 0);
+    assert(chainFirst.getCompletedQueueSize() == 0);
+    assert(chainFirst.nextCompletionTime() == std::numeric_limits<float>::infinity());
+    std::vector<Request> clearedCompleted;
+    std::vector<Request> clearedRejected;
+    chainFirst.collectCompletedRequests(clearedCompleted);
+    chainFirst.collectRejectedRequests(clearedRejected);
+    assert(clearedCompleted.empty());
+    assert(clearedRejected.empty() && "Empty source must replace old rejected history too");
+    // Mutating the original after assignment must not affect another copy.
+    assignmentSource.completeActiveRequest(4.0f);
+    assert(chainSecond.getActiveQueueSize() == 1);
+    assert(chainSecond.getCompletedQueueSize() == 1);
+    assert(chainSecond.getWaitingQueueSize() == 1);
+
+    // test fractional workUnit - scheduling and collection ///////////////////////////////////////////
+    Server fractionalServer(100, 2.0f, 1, 1);
+    accepted = fractionalServer.submitRequest(Request(100, 1.0f, 2.5f), 1.0f);
+    assert(accepted);
+    assert(fractionalServer.nextCompletionTime() == 2.25f);
+    fractionalServer.completeActiveRequest(2.0f);
+    assert(fractionalServer.getActiveQueueSize() == 1 && "Fractional work must not finish at the truncated time");
+    fractionalServer.completeActiveRequest(2.25f);
+    std::vector<Request> fractionalResults;
+    fractionalServer.collectCompletedRequests(fractionalResults);
+    assert(fractionalResults.size() == 1);
+    assert(fractionalResults[0].getWorkUnit() == 2.5f);
+    assert(fractionalResults[0].responseTime() == 1.25f);
+    assert(fractionalServer.getActiveQueueSize() == 0);
 }

@@ -12,6 +12,7 @@ class Server{
         static void showRequests(std::ostream& os, const std::queue<Request>& queue);
     public: 
         Server(int id, float processingSpeed, int waitingQueueLimit, int capacity);
+        Server(const Server& other);
         ~Server() = default;
         int getId() const { return id; }
         int getCapacity() const { return capacity; }
@@ -26,6 +27,7 @@ class Server{
         void completeActiveRequest(float currentTime);
         float nextCompletionTime() const;
         
+        Server& operator=(const Server& other);
         friend std::ostream& operator<<(std::ostream& os, const Server& server);
 
         void collectCompletedRequests(std::vector<Request>& completedQueue);

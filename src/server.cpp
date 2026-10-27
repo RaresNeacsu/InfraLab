@@ -28,6 +28,12 @@ Server::Server(int id, float processingSpeed, int waitingQueueLimit, int capacit
     }
 }
 
+Server::Server(const Server& other) : 
+    id(other.id), processingSpeed(other.processingSpeed), waitingQueueLimit(other.waitingQueueLimit), capacity(other.capacity),
+    waitingRequests(other.waitingRequests), activeRequests(other.activeRequests), completedRequests(other.completedRequests),
+    rejectedRequests(other.rejectedRequests)
+{
+}
     
 bool Server::submitRequest(Request waitingRequest,float currentTime)
 {
@@ -166,10 +172,13 @@ void Server::showRequests(std::ostream& os, const std::queue<Request>& queue)
     std::queue<Request> tempQueue = queue; 
     while (!tempQueue.empty())
     {
-        os << " | " <<tempQueue.front();
+        os << "    " << tempQueue.front() << "\n";
         tempQueue.pop();
     }
-    os << "\n";
+    if (queue.empty())
+    {
+        os << "    (none)\n";
+    }
 }
 
 void Server::collectCompletedRequests(std::vector<Request>& completedQueue)
@@ -190,15 +199,31 @@ void Server::collectRejectedRequests(std::vector<Request>& rejectedQueue)
     }
 }
 
+Server& Server::operator=(const Server& other)
+{
+    if (this != &other)
+    {
+        id = other.id;
+        processingSpeed = other.processingSpeed;
+        waitingQueueLimit = other.waitingQueueLimit;
+        capacity = other.capacity;
+        waitingRequests = other.waitingRequests;
+        activeRequests = other.activeRequests;
+        completedRequests = other.completedRequests;
+        rejectedRequests = other.rejectedRequests;
+    }
+    return *this;
+}
+
 std::ostream& operator<<(std::ostream& os, const Server& server)
 {
     os << "Server ID: " << server.getId() << " | ";
     os << "Processing Speed: " << server.getProcessingSpeed() << " workunits/sec per request\n";
-    os << "Waiting ("<<server.getWaitingQueueSize()<<"/"<<server.getWaitingQueueLimit()<<") ";
+    os << "Waiting ("<<server.getWaitingQueueSize()<<"/"<<server.getWaitingQueueLimit()<<")\n";
     server.showRequests(os, server.waitingRequests);
-    os << "Active ("<<server.getActiveQueueSize()<<"/"<<server.getCapacity()<<") ";
+    os << "Active ("<<server.getActiveQueueSize()<<"/"<<server.getCapacity()<<")\n";
     server.showRequests(os, server.activeRequests);
-    os << "Completed ("<<server.getCompletedQueueSize()<<") ";
+    os << "Completed ("<<server.getCompletedQueueSize()<<")\n";
     server.showRequests(os, server.completedRequests);
     return os;
 }

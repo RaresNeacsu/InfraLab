@@ -6,6 +6,7 @@
 // Keep the checks on in every build type.
 #undef NDEBUG
 #include <cassert>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
@@ -420,23 +421,23 @@ void testRequest()
     std::ostringstream pendingOutput;
     pendingOutput << r21;
     assert(pendingOutput.str() ==
-               "Request ID : 21| Arrival Time 5| Work Unit: 10| State: PENDING" &&
+               "Request #21 | Arrival: 5 s | Work units: 10 | State: PENDING" &&
            "Expected pending Request output without timing results");
 
     r21.start(5.25f);
     std::ostringstream startedOutput;
     startedOutput << r21;
     assert(startedOutput.str() ==
-               "Request ID : 21| Arrival Time 5| Work Unit: 10| State: IN_PROGRESS"
-               "| Start Time: 5.25| Waiting Time: 0.25" &&
+               "Request #21 | Arrival: 5 s | Work units: 10 | State: IN_PROGRESS"
+               "\n    Start: 5.25 s | Waiting: 0.25 s" &&
            "Expected started Request output with start and waiting times");
 
     r21.complete(7.0f);
     std::ostringstream completedOutput;
     completedOutput << r21;
     assert(completedOutput.str() ==
-               "Request ID : 21| Arrival Time 5| Work Unit: 10| State: COMPLETED"
-               "| Start Time: 5.25| Finish Time: 7| Waiting Time: 0.25| Response Time: 2" &&
+               "Request #21 | Arrival: 5 s | Work units: 10 | State: COMPLETED"
+               "\n    Start: 5.25 s | Finish: 7 s | Waiting: 0.25 s | Response: 2 s" &&
            "Expected completed Request output with all timing results");
     assert(r21.waitingTime() == 0.25f && r21.responseTime() == 2.0f &&
            "Expected output to preserve Request timing results");
@@ -446,7 +447,7 @@ void testRequest()
     std::ostringstream rejectedOutput;
     rejectedOutput << r22;
     assert(rejectedOutput.str() ==
-               "Request ID : 22| Arrival Time 1.5| Work Unit: 4| State: REJECTED" &&
+               "Request #22 | Arrival: 1.5 s | Work units: 4 | State: REJECTED" &&
            "Expected rejected Request output without timing results");
 
     const Request r23(23, 0.0f, 1);
@@ -455,7 +456,66 @@ void testRequest()
     assert(&returnedStream == &chainedOutput && "Expected operator<< to return the supplied stream");
     returnedStream << " | " << r22;
     assert(chainedOutput.str() ==
-               "Request ID : 23| Arrival Time 0| Work Unit: 1| State: PENDING | "
-               "Request ID : 22| Arrival Time 1.5| Work Unit: 4| State: REJECTED" &&
+               "Request #23 | Arrival: 0 s | Work units: 1 | State: PENDING | "
+               "Request #22 | Arrival: 1.5 s | Work units: 4 | State: REJECTED" &&
            "Expected chained output to support const Requests and multiple insertions");
+
+    // test fractional workUnit ///////////////////////////////////////////
+    Request fractionalWork(100, 1.0f, 0.25f);
+    assert(fractionalWork.getWorkUnit() == 0.25f && "Work below one must not be truncated");
+    fractionalWork.start(1.5f);
+    fractionalWork.complete(1.75f);
+    assert(fractionalWork.waitingTime() == 0.5f);
+    assert(fractionalWork.responseTime() == 0.75f);
+    std::ostringstream fractionalOutput;
+    fractionalOutput << fractionalWork;
+    assert(fractionalOutput.str() ==
+        "Request #100 | Arrival: 1 s | Work units: 0.25 | State: COMPLETED"
+        "\n    Start: 1.5 s | Finish: 1.75 s | Waiting: 0.5 s | Response: 0.75 s");
+
+    // test constructor - invalid float workUnit ///////////////////////////////////////////
+    caught = false;
+    try
+    {
+        Request invalidWork(101, 0.0f, -0.25f);
+    }
+    catch (const std::invalid_argument &)
+    {
+        caught = true;
+    }
+    assert(caught && "Expected negative fractional work to throw");
+
+    caught = false;
+    try
+    {
+        Request invalidWork(101, 0.0f, std::numeric_limits<float>::quiet_NaN());
+    }
+    catch (const std::invalid_argument &)
+    {
+        caught = true;
+    }
+    assert(caught && "Expected NaN work to throw");
+
+    caught = false;
+    try
+    {
+        Request invalidWork(101, 0.0f, std::numeric_limits<float>::infinity());
+    }
+    catch (const std::invalid_argument &)
+    {
+        caught = true;
+    }
+    assert(caught && "Expected positive infinite work to throw");
+
+    caught = false;
+    try
+    {
+        Request invalidWork(101, 0.0f, -std::numeric_limits<float>::infinity());
+    }
+    catch (const std::invalid_argument &)
+    {
+        caught = true;
+    }
+    assert(caught && "Expected negative infinite work to throw");
+
 }

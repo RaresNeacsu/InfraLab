@@ -201,7 +201,7 @@ void testSimulationReport()
     std::ostream& returnedStream = (emptyOutput << empty);
     assert(&returnedStream == &emptyOutput);
     const std::string emptyText =
-        "Simulation Report:\nCompleted Requests: 0\n\nRejected Requests: 0\n\n"
+        "SIMULATION REPORT\n=================\n\nCompleted Requests: 0\n\nRejected Requests: 0\n\n"
         "No completed requests to calculate average times.\n";
     assert(emptyOutput.str() == emptyText);
     returnedStream << "end";
@@ -209,8 +209,8 @@ void testSimulationReport()
     std::ostringstream rejectedOutput;
     rejectedOutput << rejectedOnly;
     std::ostringstream expectedRejected;
-    expectedRejected << "Simulation Report:\nCompleted Requests: 0\n\nRejected Requests: 2\n"
-                     << " | " << rejected << " | " << otherRejected << "\n"
+    expectedRejected << "SIMULATION REPORT\n=================\n\nCompleted Requests: 0\n\nRejected Requests: 2\n"
+                     << "  " << rejected << "\n  " << otherRejected << "\n\n"
                      << "No completed requests to calculate average times.\n";
     assert(rejectedOutput.str() == expectedRejected.str());
 
@@ -219,17 +219,17 @@ void testSimulationReport()
     std::ostringstream output;
     output << printable;
     std::ostringstream expected;
-    expected << "Simulation Report:\nCompleted Requests: 2\n"
-             << " | " << first << " | " << second << "\nRejected Requests: 2\n"
-             << " | " << rejected << " | " << otherRejected << "\n"
-             << "Average Waiting Time: 0.25\nAverage Response Time: 1.375\n";
+    expected << "SIMULATION REPORT\n=================\n\nCompleted Requests: 2\n"
+             << "  " << first << "\n  " << second << "\n\nRejected Requests: 2\n"
+             << "  " << rejected << "\n  " << otherRejected << "\n\n"
+             << "Average Waiting Time: 0.25 s\nAverage Response Time: 1.375 s\n";
     assert(output.str() == expected.str() && "Output must list each Request in input order with correct averages");
     const SimulationReport printableCompleted(std::vector<Request>{first}, noRequests);
     std::ostringstream completedOutput;
     completedOutput << printableCompleted;
     std::ostringstream expectedCompleted;
-    expectedCompleted << "Simulation Report:\nCompleted Requests: 1\n | " << first
-                      << "\nRejected Requests: 0\n\nAverage Waiting Time: 0.5\nAverage Response Time: 2.5\n";
+    expectedCompleted << "SIMULATION REPORT\n=================\n\nCompleted Requests: 1\n  " << first
+                      << "\n\nRejected Requests: 0\n\nAverage Waiting Time: 0.5 s\nAverage Response Time: 2.5 s\n";
     assert(completedOutput.str() == expectedCompleted.str());
     std::ostringstream repeatedOutput;
     repeatedOutput << printable;
@@ -261,4 +261,17 @@ void testSimulationReport()
     assert(rejectedView[1].getState() == Request::State::REJECTED);
     assert(snapshot.getCompletedRequests()[0].getId() == first.getId());
     assert(snapshot.getRejectedRequests()[0].getId() == rejected.getId());
+
+    // test fractional workUnit - report preserves request data ///////////////////////////////////////////
+    Request fractionalCompleted(100, 0.0f, 1.5f);
+    fractionalCompleted.start(0.25f);
+    fractionalCompleted.complete(1.0f);
+    Request fractionalRejected(101, 0.0f, 0.5f);
+    fractionalRejected.reject();
+    const SimulationReport fractionalReport(
+        std::vector<Request>{fractionalCompleted}, std::vector<Request>{fractionalRejected});
+    assert(fractionalReport.getCompletedRequests()[0].getWorkUnit() == 1.5f);
+    assert(fractionalReport.getRejectedRequests()[0].getWorkUnit() == 0.5f);
+    assert(fractionalReport.averageWaitingTime() == 0.25f);
+    assert(fractionalReport.averageResponseTime() == 1.0f);
 }

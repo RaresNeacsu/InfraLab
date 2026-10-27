@@ -2,7 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 
-Request::Request(int id, float arrivalTime, int workUnit) : id(id), arrivalTime(arrivalTime), workUnit(workUnit), state(State::PENDING)
+Request::Request(int id, float arrivalTime, float workUnit) : id(id), arrivalTime(arrivalTime), workUnit(workUnit), state(State::PENDING)
 {
     if (id <= 0)
     {
@@ -12,9 +12,9 @@ Request::Request(int id, float arrivalTime, int workUnit) : id(id), arrivalTime(
     {
         throw std::invalid_argument("Arrival time must be a valid non-negative float.");
     }
-    if (workUnit <= 0)
+    if (workUnit <= 0.0f || std::isnan(workUnit) || std::isinf(workUnit))
     {
-        throw std::invalid_argument("Work unit must be positive.");
+        throw std::invalid_argument("Work unit must be a valid positive float.");
     }
 }
 
@@ -97,8 +97,8 @@ float Request::responseTime() const
 
 std::ostream& operator<<(std::ostream& os, const Request& request)
 {
-    os << "Request ID : " << request.id << "| Arrival Time " << request.arrivalTime
-       << "| Work Unit: " << request.workUnit << "| State: ";
+    os << "Request #" << request.id << " | Arrival: " << request.arrivalTime
+       << " s | Work units: " << request.workUnit << " | State: ";
     switch (request.state)
     {
         case Request::State::PENDING:
@@ -116,19 +116,23 @@ std::ostream& operator<<(std::ostream& os, const Request& request)
     }
     if(request.state == Request::State::IN_PROGRESS || request.state == Request::State::COMPLETED)
     {
-        os << "| Start Time: " << request.startTime;
+        os << "\n    Start: " << request.startTime;
     }
     if(request.state == Request::State::COMPLETED)
     {
-        os << "| Finish Time: " << request.finishTime;
+        os << " s | Finish: " << request.finishTime;
     }
     if(request.state == Request::State::IN_PROGRESS || request.state == Request::State::COMPLETED)
     {
-        os << "| Waiting Time: " << request.waitingTime();
+        os << " s | Waiting: " << request.waitingTime();
     }
     if(request.state == Request::State::COMPLETED)
     {
-        os << "| Response Time: " << request.responseTime();
+        os << " s | Response: " << request.responseTime();
+    }
+    if (request.state == Request::State::IN_PROGRESS || request.state == Request::State::COMPLETED)
+    {
+        os << " s";
     }
     return os;
 }

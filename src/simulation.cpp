@@ -113,12 +113,12 @@ std::ostream& operator<<(std::ostream& os, const Simulation& simulation)
     os << "Incoming Requests:\n";
     for (const auto& request : simulation.incomingRequests)
     {
-        os << request;
+        os << "  " << request << "\n";
     }
     os << "\nServers:\n";
     for (const auto& server : simulation.servers)
     {
-        os << server;
+        os << server << "\n";
     }
     return os;
 }

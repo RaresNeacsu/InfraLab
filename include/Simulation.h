@@ -16,13 +16,13 @@ public:
         TimeLimitReached,
     };
     Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, float maximumTime);
-    float nextEventTime() const;
     StepResult step();
     SimulationReport collectReport();
     ~Simulation() = default;
     friend std::ostream& operator<<(std::ostream& os, const Simulation& simulation);
 
 private:
+    float nextEventTime() const;
     std::vector<Server> servers;
     std::vector<Request> incomingRequests;
     std::size_t nextArrivalIndex = 0;

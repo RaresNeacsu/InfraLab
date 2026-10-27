@@ -8,6 +8,17 @@
 
 #include "Simulation.h"
 
+namespace {
+void assertCurrentTime(const Simulation& simulation, float expectedTime)
+{
+    std::ostringstream actual;
+    actual << simulation;
+    std::ostringstream expected;
+    expected << "Current Time: " << expectedTime << "\n";
+    assert(actual.str().find(expected.str()) != std::string::npos);
+}
+} // namespace
+
 void testSimulation()
 {
     const std::vector<Server> servers{Server(1, 2.0f, 2, 1)};
@@ -319,64 +330,42 @@ void testSimulation()
     assert(caught && "Expected negative infinite maximum time to throw with empty traffic");
 
 
-    // test nextEventTime() - no events ///////////////////////////////////////////
-    const Simulation noEvents(servers, noTraffic, 20.0f);
-    assert(noEvents.nextEventTime() == std::numeric_limits<float>::infinity() &&
-           "Idle servers without incoming traffic must have no next event");
-
-    // test nextEventTime() - arrivals only ///////////////////////////////////////////
-    const std::vector<Request> arrivals{Request(10, 2.5f, 1), Request(11, 4.0f, 1)};
-    const Simulation arrivalsOnly(servers, arrivals, 20.0f);
-    assert(arrivalsOnly.nextEventTime() == 2.5f && "Expected the next arrival time");
-    assert(arrivalsOnly.nextEventTime() == 2.5f && "Query must not advance the arrival index");
-    const Simulation zeroArrival(servers, std::vector<Request>{Request(12, 0.0f, 1)}, 20.0f);
-    assert(zeroArrival.nextEventTime() == 0.0f && "An arrival at zero is a valid next event");
-    const Simulation equalArrivals(servers,
-        std::vector<Request>{Request(13, 2.5f, 1), Request(14, 2.5f, 1)}, 20.0f);
-    assert(equalArrivals.nextEventTime() == 2.5f);
-
-    // test nextEventTime() - completions only ///////////////////////////////////////////
+    // test step() - earliest event across servers and independent snapshots ///////////////////////////////////////////
     Server busy(2, 2.0f, 1, 2);
     bool accepted = busy.submitRequest(Request(15, 0.0f, 8), 0.0f);
-    assert(accepted); // finish 4
+    assert(accepted);
     accepted = busy.submitRequest(Request(16, 0.0f, 3), 0.0f);
-    assert(accepted); // finish 1.5, despite being inserted second
-    const Simulation completionOnly(std::vector<Server>{busy}, noTraffic, 20.0f);
-    assert(completionOnly.nextEventTime() == 1.5f && "Expected the earliest active completion");
-    assert(completionOnly.nextEventTime() == 1.5f && "Query must not finish or remove active Requests");
-    assert(busy.getActiveQueueSize() == 2);
-    assert(busy.getWaitingQueueSize() == 0);
-    assert(busy.getCompletedQueueSize() == 0);
-
-    // test nextEventTime() - arrival versus completion ///////////////////////////////////////////
-    const Simulation arrivalFirst(std::vector<Server>{busy},
-        std::vector<Request>{Request(17, 0.5f, 1)}, 20.0f);
-    assert(arrivalFirst.nextEventTime() == 0.5f && "Arrival before completion must be selected");
-    const Simulation completionFirst(std::vector<Server>{busy}, arrivals, 20.0f);
-    assert(completionFirst.nextEventTime() == 1.5f && "Completion before arrival must be selected");
-    const Simulation tiedEvents(std::vector<Server>{busy},
-        std::vector<Request>{Request(18, 1.5f, 1)}, 20.0f);
-    assert(tiedEvents.nextEventTime() == 1.5f && "Equal event times must preserve their shared timestamp");
-    // This query selects a timestamp; completion-first handling at a tie belongs to the event loop.
-
-    // test nextEventTime() - earliest completion across multiple servers ///////////////////////////////////////////
+    assert(accepted);
     Server faster(3, 4.0f, 0, 1);
     accepted = faster.submitRequest(Request(19, 0.0f, 3), 0.0f);
-    assert(accepted); // finish 0.75
+    assert(accepted);
     const Server idle(4, 1.0f, 0, 1);
-    const Simulation severalServers(std::vector<Server>{idle, busy, faster}, arrivals, 20.0f);
-    assert(severalServers.nextEventTime() == 0.75f && "Every server must contribute to the minimum");
-    const Simulation reorderedServers(std::vector<Server>{faster, busy, idle}, arrivals, 20.0f);
-    assert(reorderedServers.nextEventTime() == 0.75f && "Server order must not affect event selection");
-
-    // test nextEventTime() - simulation owns its server snapshot ///////////////////////////////////////////
+    Simulation snapshots(std::vector<Server>{idle, busy, faster}, noTraffic, 20.0f);
+    Simulation reordered(std::vector<Server>{faster, busy, idle}, noTraffic, 20.0f);
     faster.completeActiveRequest(0.75f);
     busy.completeActiveRequest(4.0f);
-    assert(severalServers.nextEventTime() == 0.75f && "External server changes must not change simulation data");
-    assert(completionOnly.nextEventTime() == 1.5f);
-    const Simulation finishedServers(std::vector<Server>{busy, faster}, noTraffic, 20.0f);
-    assert(finishedServers.nextEventTime() == std::numeric_limits<float>::infinity() &&
-           "Completed history must not count as an active event");
+    Simulation::StepResult snapshotResult = snapshots.step();
+    assert(snapshotResult == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(snapshots, 0.75f);
+    snapshotResult = reordered.step();
+    assert(snapshotResult == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(reordered, 0.75f);
+    const SimulationReport firstSnapshot = snapshots.collectReport();
+    assert(firstSnapshot.getCompletedRequestsCount() == 1);
+    assert(firstSnapshot.getCompletedRequests().front().getId() == 19);
+    snapshotResult = snapshots.step();
+    assert(snapshotResult == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(snapshots, 1.5f);
+    snapshotResult = snapshots.step();
+    assert(snapshotResult == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(snapshots, 4.0f);
+    snapshotResult = snapshots.step();
+    assert(snapshotResult == Simulation::StepResult::Completed);
+    const SimulationReport remainingSnapshot = snapshots.collectReport();
+    assert(remainingSnapshot.getCompletedRequestsCount() == 2);
+    Simulation finishedServers(std::vector<Server>{busy, faster}, noTraffic, 20.0f);
+    snapshotResult = finishedServers.step();
+    assert(snapshotResult == Simulation::StepResult::Completed);
 
     // test step() - no events and repeated completion ///////////////////////////////////////////
     Simulation idleSimulation(servers, noTraffic, 10.0f);
@@ -389,11 +378,11 @@ void testSimulation()
     Simulation singleStep(std::vector<Server>{Server(20, 2.0f, 0, 1)},
         std::vector<Request>{Request(20, 0.0f, 3)}, 10.0f);
     result = singleStep.step();
+    assertCurrentTime(singleStep, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(singleStep.nextEventTime() == 1.5f && "Arrival must be consumed and its completion scheduled");
     result = singleStep.step();
+    assertCurrentTime(singleStep, 1.5f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(singleStep.nextEventTime() == std::numeric_limits<float>::infinity());
     result = singleStep.step();
     assert(result == Simulation::StepResult::Completed);
 
@@ -401,12 +390,13 @@ void testSimulation()
     Simulation sameTime(std::vector<Server>{Server(21, 1.0f, 0, 2)},
         std::vector<Request>{Request(21, 1.0f, 2), Request(22, 1.0f, 1)}, 10.0f);
     result = sameTime.step();
+    assertCurrentTime(sameTime, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(sameTime.nextEventTime() == 2.0f && "Both arrivals must be processed in one step");
     result = sameTime.step();
+    assertCurrentTime(sameTime, 2.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(sameTime.nextEventTime() == 3.0f);
     result = sameTime.step();
+    assertCurrentTime(sameTime, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = sameTime.step();
     assert(result == Simulation::StepResult::Completed);
@@ -415,25 +405,26 @@ void testSimulation()
     Simulation completionBeforeArrival(std::vector<Server>{Server(22, 1.0f, 0, 1)},
         std::vector<Request>{Request(23, 0.0f, 1), Request(24, 1.0f, 2)}, 10.0f);
     result = completionBeforeArrival.step();
+    assertCurrentTime(completionBeforeArrival, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(completionBeforeArrival.nextEventTime() == 1.0f);
     result = completionBeforeArrival.step();
+    assertCurrentTime(completionBeforeArrival, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(completionBeforeArrival.nextEventTime() == 3.0f &&
-           "Completion must free the slot before the simultaneous arrival is admitted");
 
     // test step() - waiting requests before new arrivals ///////////////////////////////////////////
     Simulation waitingPriority(std::vector<Server>{Server(23, 1.0f, 1, 1)},
         std::vector<Request>{Request(25, 0.0f, 1), Request(26, 0.0f, 2), Request(27, 1.0f, 4)}, 20.0f);
     result = waitingPriority.step();
+    assertCurrentTime(waitingPriority, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = waitingPriority.step();
+    assertCurrentTime(waitingPriority, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(waitingPriority.nextEventTime() == 3.0f && "Older waiting Request must start before new arrival");
     result = waitingPriority.step();
+    assertCurrentTime(waitingPriority, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(waitingPriority.nextEventTime() == 7.0f && "Completion-only step must also start waiting Requests");
     result = waitingPriority.step();
+    assertCurrentTime(waitingPriority, 7.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = waitingPriority.step();
     assert(result == Simulation::StepResult::Completed);
@@ -442,21 +433,22 @@ void testSimulation()
     Simulation roundRobin(std::vector<Server>{Server(24, 1.0f, 0, 2), Server(25, 2.0f, 0, 2)},
         std::vector<Request>{Request(28, 0.0f, 4), Request(29, 0.5f, 2), Request(30, 1.0f, 1)}, 10.0f);
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(roundRobin.nextEventTime() == 0.5f);
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 0.5f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(roundRobin.nextEventTime() == 1.0f);
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(roundRobin.nextEventTime() == 1.5f && "Second arrival must use the faster second server");
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 1.5f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(roundRobin.nextEventTime() == 2.0f && "Third arrival must wrap back to the first server");
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 2.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(roundRobin.nextEventTime() == 4.0f);
     result = roundRobin.step();
+    assertCurrentTime(roundRobin, 4.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = roundRobin.step();
     assert(result == Simulation::StepResult::Completed);
@@ -465,11 +457,13 @@ void testSimulation()
     Simulation refusal(std::vector<Server>{Server(26, 1.0f, 0, 1)},
         std::vector<Request>{Request(31, 0.0f, 3), Request(32, 1.0f, 1)}, 10.0f);
     result = refusal.step();
+    assertCurrentTime(refusal, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = refusal.step();
+    assertCurrentTime(refusal, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(refusal.nextEventTime() == 3.0f && "Rejected arrival must not remain pending or become active");
     result = refusal.step();
+    assertCurrentTime(refusal, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = refusal.step();
     assert(result == Simulation::StepResult::Completed);
@@ -477,31 +471,36 @@ void testSimulation()
     // test step() - time limit before arrival or active completion ///////////////////////////////////////////
     Simulation lateArrival(servers, std::vector<Request>{Request(33, 5.0f, 1)}, 4.0f);
     result = lateArrival.step();
+    assertCurrentTime(lateArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
-    assert(lateArrival.nextEventTime() == 5.0f && "Time limit must not consume the future arrival");
     result = lateArrival.step();
+    assertCurrentTime(lateArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     Simulation lateCompletion(std::vector<Server>{Server(27, 1.0f, 0, 1)},
         std::vector<Request>{Request(34, 0.0f, 5)}, 4.0f);
     result = lateCompletion.step();
+    assertCurrentTime(lateCompletion, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = lateCompletion.step();
+    assertCurrentTime(lateCompletion, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
-    assert(lateCompletion.nextEventTime() == 5.0f && "Time limit must not finalize a later completion");
 
     // test step() - events exactly at maximum time are processed ///////////////////////////////////////////
     Simulation boundaryArrival(std::vector<Server>{Server(28, 1.0f, 0, 1)},
         std::vector<Request>{Request(35, 4.0f, 1)}, 4.0f);
     result = boundaryArrival.step();
+    assertCurrentTime(boundaryArrival, 4.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(boundaryArrival.nextEventTime() == 5.0f);
     result = boundaryArrival.step();
+    assertCurrentTime(boundaryArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     Simulation boundaryCompletion(std::vector<Server>{Server(29, 1.0f, 0, 1)},
         std::vector<Request>{Request(36, 0.0f, 4)}, 4.0f);
     result = boundaryCompletion.step();
+    assertCurrentTime(boundaryCompletion, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = boundaryCompletion.step();
+    assertCurrentTime(boundaryCompletion, 4.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = boundaryCompletion.step();
     assert(result == Simulation::StepResult::Completed);
@@ -514,21 +513,53 @@ void testSimulation()
     Simulation rejectionRotation(std::vector<Server>{occupiedA, freeB},
         std::vector<Request>{Request(41, 1.0f, 1), Request(42, 3.0f, 1)}, 20.0f);
     result = rejectionRotation.step(); // Arrival at 1 is assigned to full A.
+    assertCurrentTime(rejectionRotation, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(rejectionRotation.nextEventTime() == 3.0f &&
-           "Rejected arrival must not be retried on free B, which would finish it at 2");
     result = rejectionRotation.step(); // Arrival at 3 must advance to free B.
+    assertCurrentTime(rejectionRotation, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(rejectionRotation.nextEventTime() == 4.0f &&
-           "Rejection on A must advance round robin so the following arrival runs on B");
     result = rejectionRotation.step();
+    assertCurrentTime(rejectionRotation, 4.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(rejectionRotation.nextEventTime() == 10.0f);
     result = rejectionRotation.step();
+    assertCurrentTime(rejectionRotation, 10.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(rejectionRotation.nextEventTime() == std::numeric_limits<float>::infinity());
     result = rejectionRotation.step();
     assert(result == Simulation::StepResult::Completed);
+
+    // test step() - verify outcomes through reports ///////////////////////////////////////////
+    result = completionBeforeArrival.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    const SimulationReport priorityReport = completionBeforeArrival.collectReport();
+    assert(priorityReport.getCompletedRequestsCount() == 2);
+    assert(priorityReport.getRejectedRequestsCount() == 0);
+    assert(priorityReport.averageWaitingTime() == 0.0f);
+    assert(priorityReport.averageResponseTime() == 1.5f);
+    const SimulationReport waitingReport = waitingPriority.collectReport();
+    assert(waitingReport.getCompletedRequestsCount() == 3);
+    assert(waitingReport.getRejectedRequestsCount() == 0);
+    assert(waitingReport.getCompletedRequests()[1].getId() == 26);
+    assert(waitingReport.getCompletedRequests()[1].waitingTime() == 1.0f);
+    assert(waitingReport.getCompletedRequests()[2].waitingTime() == 2.0f);
+    const SimulationReport robinReport = roundRobin.collectReport();
+    assert(robinReport.getCompletedRequestsCount() == 3);
+    assert(robinReport.getRejectedRequestsCount() == 0);
+    assert(robinReport.getCompletedRequests()[0].getId() == 30);
+    assert(robinReport.getCompletedRequests()[0].responseTime() == 1.0f);
+    assert(robinReport.getCompletedRequests()[2].getId() == 29);
+    assert(robinReport.getCompletedRequests()[2].responseTime() == 1.0f);
+    const SimulationReport refusedReport = refusal.collectReport();
+    assert(refusedReport.getCompletedRequestsCount() == 1);
+    assert(refusedReport.getRejectedRequestsCount() == 1);
+    assert(refusedReport.getRejectedRequests().front().getId() == 32);
+    const SimulationReport lateArrivalReport = lateArrival.collectReport();
+    assert(lateArrivalReport.getCompletedRequestsCount() == 0);
+    assert(lateArrivalReport.getRejectedRequestsCount() == 0);
+    const SimulationReport lateCompletionReport = lateCompletion.collectReport();
+    assert(lateCompletionReport.getCompletedRequestsCount() == 0);
+    const SimulationReport boundaryReport = boundaryCompletion.collectReport();
+    assert(boundaryReport.getCompletedRequestsCount() == 1);
+    assert(boundaryReport.averageResponseTime() == 4.0f);
 
     // test collectReport() - original scenario ///////////////////////////////////////////
     const std::vector<Server> originalServers{
@@ -594,7 +625,7 @@ void testSimulation()
     expectedEmptyState << "Simulation State:\nCurrent Time: 0\nMaximum Time: 12\n"
                        << "Next Arrival Index: 0\nNext Server Index: 0\n"
                        << "Incoming Requests:\n\nServers:\n"
-                       << outputServers[0] << outputServers[1];
+                       << outputServers[0] << "\n" << outputServers[1] << "\n";
     assert(emptyState.str() == expectedEmptyState.str());
     returnedStream << "end";
     assert(emptyState.str() == expectedEmptyState.str() + "end");
@@ -608,11 +639,11 @@ void testSimulation()
     std::ostringstream expectedInitialState;
     expectedInitialState << "Simulation State:\nCurrent Time: 0\nMaximum Time: 12\n"
                          << "Next Arrival Index: 0\nNext Server Index: 0\nIncoming Requests:\n"
-                         << outputTraffic[0] << outputTraffic[1] << "\nServers:\n"
-                         << outputServers[0] << outputServers[1];
+                         << "  " << outputTraffic[0] << "\n  " << outputTraffic[1] << "\n" << "\nServers:\n"
+                         << outputServers[0] << "\n" << outputServers[1] << "\n";
     assert(initialState.str() == expectedInitialState.str() && "Output must preserve incoming and server order");
-    assert(printableSimulation.nextEventTime() == 1.0f);
     result = printableSimulation.step();
+    assertCurrentTime(printableSimulation, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     std::vector<Server> expectedOutputServers = outputServers;
     accepted = expectedOutputServers[0].submitRequest(outputTraffic[0], 1.0f);
@@ -622,17 +653,17 @@ void testSimulation()
     std::ostringstream expectedSteppedState;
     expectedSteppedState << "Simulation State:\nCurrent Time: 1\nMaximum Time: 12\n"
                          << "Next Arrival Index: 1\nNext Server Index: 1\nIncoming Requests:\n"
-                         << outputTraffic[0] << outputTraffic[1] << "\nServers:\n"
-                         << expectedOutputServers[0] << expectedOutputServers[1];
+                         << "  " << outputTraffic[0] << "\n  " << outputTraffic[1] << "\n" << "\nServers:\n"
+                         << expectedOutputServers[0] << "\n" << expectedOutputServers[1] << "\n";
     assert(steppedState.str() == expectedSteppedState.str());
     std::ostringstream repeatedState;
     repeatedState << printableView;
     assert(repeatedState.str() == steppedState.str() && "Output must not advance simulation or consume queues");
-    assert(printableSimulation.nextEventTime() == 2.0f);
     result = printableSimulation.step();
+    assertCurrentTime(printableSimulation, 2.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    assert(printableSimulation.nextEventTime() == 3.0f);
     result = printableSimulation.step();
+    assertCurrentTime(printableSimulation, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = printableSimulation.step();
     assert(result == Simulation::StepResult::Completed);
@@ -654,10 +685,31 @@ void testSimulation()
     // test operator<< - time limit state ///////////////////////////////////////////
     Simulation limitedOutput(outputServers, std::vector<Request>{Request(62, 5.0f, 1)}, 2.5f);
     result = limitedOutput.step();
+    assertCurrentTime(limitedOutput, 2.5f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     std::ostringstream limitState;
     limitState << limitedOutput;
     assert(limitState.str().find("Current Time: 2.5\nMaximum Time: 2.5\n") != std::string::npos);
     assert(limitState.str().find("Next Arrival Index: 0\nNext Server Index: 0\n") != std::string::npos);
-    assert(limitedOutput.nextEventTime() == 5.0f && "Printing a limited simulation must not consume future arrivals");
+
+    // test fractional workUnit - full simulation and report ///////////////////////////////////////////
+    Simulation fractionalSimulation(std::vector<Server>{Server(100, 2.0f, 1, 1)},
+        std::vector<Request>{Request(100, 0.0f, 1.5f), Request(101, 0.0f, 1.5f)}, 10.0f);
+    result = fractionalSimulation.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    result = fractionalSimulation.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(fractionalSimulation, 0.75f);
+    result = fractionalSimulation.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    assertCurrentTime(fractionalSimulation, 1.5f);
+    result = fractionalSimulation.step();
+    assert(result == Simulation::StepResult::Completed);
+    const SimulationReport fractionalSimulationReport = fractionalSimulation.collectReport();
+    assert(fractionalSimulationReport.getCompletedRequestsCount() == 2);
+    assert(fractionalSimulationReport.getRejectedRequestsCount() == 0);
+    assert(fractionalSimulationReport.averageWaitingTime() == 0.375f);
+    assert(fractionalSimulationReport.averageResponseTime() == 1.125f);
+    assert(fractionalSimulationReport.getCompletedRequests()[0].getWorkUnit() == 1.5f);
+    assert(fractionalSimulationReport.getCompletedRequests()[1].getWorkUnit() == 1.5f);
 }
