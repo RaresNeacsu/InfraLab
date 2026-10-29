@@ -2,6 +2,7 @@
 
 add_executable(${TESTS_EXECUTABLE_NAME}
     test.cpp
+    test_file_loading.cpp
     test_request.cpp
     test_server.cpp
     test_simulationReport.cpp

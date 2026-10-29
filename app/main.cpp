@@ -5,8 +5,8 @@
 
 int main() {
     try {
-        std::ifstream serversFile = loadFromFile("assets/servers.txt");
-        std::ifstream requestsFile = loadFromFile("assets/requests.txt");
+        std::ifstream serversFile = loadFromFile("assets/servers.json");
+        std::ifstream requestsFile = loadFromFile("assets/requests.json");
 
         std::vector<Server> servers = loadServersFromFile(serversFile);
         std::vector<Request> requests = loadRequestsFromFile(requestsFile);
@@ -75,7 +75,7 @@ int main() {
                     }
                 }
                 if(!completed && !rejected){
-                    std::cout << request << std::endl;
+                    std::cout << "Request ID: " << request.getId() << std::endl;
                 }
             }
             std::cout << std::endl;

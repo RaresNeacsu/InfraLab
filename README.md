@@ -211,4 +211,9 @@ The [template repository](https://github.com/mcmarius/oop-template) itself is li
 
 ## Resurse
 
-- adăugați trimiteri **detaliate** către resursele externe care v-au ajutat sau pe care le-ați folosit
+
+- Library name: JSON for Modern C++ / nlohmann/json
+- Version: 3.12.0
+- License: MIT
+- Link: https://github.com/nlohmann/json
+- Usage: parsing server and request configuration files.
