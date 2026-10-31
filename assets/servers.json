@@ -8,19 +8,13 @@
   {
     "id": 2,
     "processing_speed": 2.0,
-    "waiting_queue_limit": 1,
+    "waiting_queue_limit": 2,
     "capacity": 1
   },
   {
     "id": 3,
-    "processing_speed": 1.0,
-    "waiting_queue_limit": 1,
-    "capacity": 2
-  },
-  {
-    "id": 4,
-    "processing_speed": 3.0,
-    "waiting_queue_limit": 3,
-    "capacity": 3
+    "processing_speed": 1.5,
+    "waiting_queue_limit": 2,
+    "capacity": 1
   }
 ]

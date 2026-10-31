@@ -3,10 +3,10 @@
 #include "Simulation.h"
 #include "file_loading.h"
 
-int main() {
+int main(int argc, char** argv) {
     try {
         std::ifstream serversFile = fileLoading::loadFromFile("assets/servers.json");
-        std::ifstream requestsFile = fileLoading::loadFromFile("assets/requests.json");
+        std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/requests_normal.json");
 
         std::vector<Server> servers = fileLoading::loadServersFromFile(serversFile);
         std::vector<Request> requests = fileLoading::loadRequestsFromFile(requestsFile);
@@ -44,19 +44,13 @@ int main() {
             std::cout << "Simulation completed all events." << std::endl;
         }
         SimulationReport report = simulation.collectReport();
-        std::cout << "\n" << report << std::endl;
 
         std::ofstream reportFile = fileLoading::saveToFile("assets/simulation_report.txt");
         if (!reportFile) {
             throw std::runtime_error("Failed to create simulation report file.");
         }
         reportFile << report;
-        reportFile.close();
-        if(!reportFile) {
-            throw std::runtime_error("Failed to write simulation report to file.");
-        }
-
-        std::cout<< "Unfinished requests - " <<requests.size() - report.getCompletedRequestsCount() - report.getRejectedRequestsCount() <<"/" << requests.size() << " " << std::endl;
+        reportFile<< "Unfinished requests - " <<requests.size() - report.getCompletedRequestsCount() - report.getRejectedRequestsCount() <<"/" << requests.size() << " " << std::endl;
         if(requests.size() - report.getCompletedRequestsCount() - report.getRejectedRequestsCount() > 0){
             for(const auto& request : requests){
                 bool completed = false;
@@ -75,11 +69,16 @@ int main() {
                     }
                 }
                 if(!completed && !rejected){
-                    std::cout << "Request ID: " << request.getId() << std::endl;
+                    reportFile << "Request ID: " << request.getId() << std::endl;
                 }
             }
-            std::cout << std::endl;
+            reportFile << std::endl;
         }
+        reportFile.close();
+        if(!reportFile) {
+            throw std::runtime_error("Failed to write simulation report to file.");
+        }
+
         std::cout << "Simulation report saved to assets/simulation_report.txt" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
