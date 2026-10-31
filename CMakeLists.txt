@@ -74,6 +74,7 @@ target_sources(${MAIN_LIBRARY_NAME}
         src/simulation.cpp
         src/simulation_report.cpp
         src/file_loading.cpp
+        src/ServerStats.cpp
 )
 
 # NOTE: Add all defined targets (e.g. executables, libraries, etc. )

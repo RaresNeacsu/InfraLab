@@ -1,5 +1,7 @@
 #undef NDEBUG
 #include <cassert>
+#include <array>
+#include <limits>
 #include <cmath>
 #include <sstream>
 #include <stdexcept>
@@ -10,6 +12,44 @@
 
 void testSimulationReport()
 {
+    // Validate snapshots at their construction boundary, not only in a report.
+    const std::array invalidStatistics{
+        std::array{0, 0, 0, 0, 0},
+        std::array{-1, 0, 0, 0, 0},
+        std::array{1, -1, 0, 0, 0},
+        std::array{1, 0, -1, 0, 0},
+        std::array{1, 0, 0, -1, 0},
+        std::array{1, 0, 0, 0, -1},
+        std::array{1, 2, 0, 1, 0},
+        std::array{1, 1, 1, 1, 0},
+        std::array{1, 0, 2, 1, 0},
+        std::array{1, 0, 1, 2, 2},
+        std::array{1, std::numeric_limits<int>::max(), 1, std::numeric_limits<int>::max(), 0}
+    };
+    for (const auto& values : invalidStatistics) {
+        bool rejectedStatistics = false;
+        try {
+            const ServerStats invalid(values[0], values[1], values[2], values[3], values[4]);
+        } catch (const std::invalid_argument&) {
+            rejectedStatistics = true;
+        }
+        assert(rejectedStatistics);
+    }
+    const ServerStats idleStatistics(1, 0, 0, 0, 0);
+    assert(idleStatistics.getTotalRequestsCount() == 0);
+    const ServerStats unfinishedStatistics(1, 2, 1, 5, 3);
+    assert(unfinishedStatistics.getTotalRequestsCount() -
+           unfinishedStatistics.getCompletedRequestsCount() -
+           unfinishedStatistics.getRejectedRequestsCount() == 2);
+    const ServerStats boundaryStatistics(1, std::numeric_limits<int>::max(),
+        0, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+    assert(boundaryStatistics.getCompletedRequestsCount() == std::numeric_limits<int>::max());
+    const SimulationReport statisticsReport({}, {}, {unfinishedStatistics});
+    std::ostringstream statisticsExplanation;
+    statisticsExplanation << statisticsReport;
+    assert(statisticsExplanation.str().find("global rejections attributed to the round-robin starting server")
+           != std::string::npos);
+
     // test constructor and getters ///////////////////////////////////////////
     Request pending(1, 0.0f, 1);
     Request started(2, 0.0f, 1);

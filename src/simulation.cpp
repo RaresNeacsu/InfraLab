@@ -1,6 +1,7 @@
 #include "Simulation.h"
 #include "Server.h"
 #include "SimulationReport.h"
+#include "ServerStats.h"
 #include <stdexcept>
 #include <cmath>
 #include <limits>
@@ -83,24 +84,44 @@ Simulation::StepResult Simulation::step()
     }
     while (nextArrivalIndex < incomingRequests.size() && incomingRequests[nextArrivalIndex].getArrivalTime() <= currentTime)
     {
-        servers[nextServerIndex].submitRequest(incomingRequests[nextArrivalIndex], currentTime);
-        nextServerIndex = (nextServerIndex + 1) % servers.size();
+        std::size_t selectedServer = nextServerIndex;
+        for (std::size_t attempts = 0; attempts < servers.size(); ++attempts)
+        {
+            const std::size_t candidate = (nextServerIndex + attempts) % servers.size();
+            if (servers[candidate].canAcceptRequest())
+            {
+                selectedServer = candidate;
+                break;
+            }
+        }
+        // If every server is full, the starting server records one rejection.
+        servers[selectedServer].submitRequest(incomingRequests[nextArrivalIndex], currentTime);
+        nextServerIndex = (selectedServer + 1) % servers.size();
         nextArrivalIndex++;
     }
     return StepResult::EventProcessed;
 
 }
 
-SimulationReport Simulation::collectReport()
+SimulationReport Simulation::collectReport() const
 {
     std::vector<Request> completedRequests;
     std::vector<Request> rejectedRequests;
-    for (auto& server : servers)
+    std::vector<ServerStats> serverReports;  
+    for (const auto& server : servers)
     {
-        server.collectCompletedRequests(completedRequests);
-        server.collectRejectedRequests(rejectedRequests);
+        // Existing collection methods drain queues; drain a local snapshot only.
+        Server snapshot(server);
+        snapshot.collectCompletedRequests(completedRequests);
+        snapshot.collectRejectedRequests(rejectedRequests);
+        int completedCount = 0;
+        int rejectedCount = 0;
+        int totalCount = 0;
+        int maxQueueSize = 0;
+        server.collectServerStatistics(completedCount, rejectedCount, totalCount, maxQueueSize);
+        serverReports.emplace_back(server.getId(), completedCount, rejectedCount, totalCount, maxQueueSize);
     }
-    return SimulationReport(completedRequests, rejectedRequests);
+    return SimulationReport(completedRequests, rejectedRequests, serverReports);
 }
 
 std::ostream& operator<<(std::ostream& os, const Simulation& simulation)

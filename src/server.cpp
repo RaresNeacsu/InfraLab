@@ -30,11 +30,19 @@ Server::Server(int id, float processingSpeed, int waitingQueueLimit, int capacit
 
 Server::Server(const Server& other) : 
     id(other.id), processingSpeed(other.processingSpeed), waitingQueueLimit(other.waitingQueueLimit), capacity(other.capacity),
+    completedRequestsCount(other.completedRequestsCount), rejectedRequestsCount(other.rejectedRequestsCount),
+    totalRequestsCount(other.totalRequestsCount), maxWaitingQueueSize(other.maxWaitingQueueSize),
     waitingRequests(other.waitingRequests), activeRequests(other.activeRequests), completedRequests(other.completedRequests),
     rejectedRequests(other.rejectedRequests)
 {
 }
     
+bool Server::canAcceptRequest() const
+{
+    return activeRequests.size() + waitingRequests.size()
+        < static_cast<std::size_t>(capacity) + static_cast<std::size_t>(waitingQueueLimit);
+}
+
 bool Server::submitRequest(Request waitingRequest,float currentTime)
 {
     if(currentTime < 0.0f || std::isnan(currentTime) || std::isinf(currentTime))
@@ -49,8 +57,9 @@ bool Server::submitRequest(Request waitingRequest,float currentTime)
     {
         throw std::runtime_error("Only pending requests can be added to the queue.");
     }
-
+    this->totalRequestsCount++;
     waitingQueueToActive(currentTime);
+    
 
     if(static_cast<int>(activeRequests.size())<getCapacity())
     {
@@ -60,11 +69,13 @@ bool Server::submitRequest(Request waitingRequest,float currentTime)
     else if (static_cast<int>(waitingRequests.size()) < waitingQueueLimit)
     {
         waitingRequests.push(waitingRequest);
+        this->maxWaitingQueueSize = std::max(this->maxWaitingQueueSize, static_cast<int>(waitingRequests.size()));
         return true;
     }
     else
     {
         waitingRequest.reject();
+        this->rejectedRequestsCount++;
         rejectedRequests.push(waitingRequest);
         return false;
     }
@@ -133,6 +144,7 @@ void Server::completeActiveRequest(float currentTime)
             if(currentTime >= scheduledFinishTime)
             {
                 activeRequest.complete(scheduledFinishTime);
+                this->completedRequestsCount++;
                 completedRequests.push(activeRequest);
                 removeRequestActive();
             }
@@ -199,6 +211,14 @@ void Server::collectRejectedRequests(std::vector<Request>& rejectedQueue)
     }
 }
 
+void Server::collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& maxWaitingQueueSize) const
+{
+    completedCount = this->completedRequestsCount;
+    rejectedCount = this->rejectedRequestsCount;
+    totalCount = this->totalRequestsCount;
+    maxWaitingQueueSize = this->maxWaitingQueueSize;
+}
+
 Server& Server::operator=(const Server& other)
 {
     if (this != &other)
@@ -207,6 +227,10 @@ Server& Server::operator=(const Server& other)
         processingSpeed = other.processingSpeed;
         waitingQueueLimit = other.waitingQueueLimit;
         capacity = other.capacity;
+        completedRequestsCount = other.completedRequestsCount;
+        rejectedRequestsCount = other.rejectedRequestsCount;
+        totalRequestsCount = other.totalRequestsCount;
+        maxWaitingQueueSize = other.maxWaitingQueueSize;
         waitingRequests = other.waitingRequests;
         activeRequests = other.activeRequests;
         completedRequests = other.completedRequests;
@@ -223,8 +247,12 @@ std::ostream& operator<<(std::ostream& os, const Server& server)
     server.showRequests(os, server.waitingRequests);
     os << "Active ("<<server.getActiveQueueSize()<<"/"<<server.getCapacity()<<")\n";
     server.showRequests(os, server.activeRequests);
-    os << "Completed ("<<server.getCompletedQueueSize()<<")\n";
+    os << "Completed ("<<server.completedRequestsCount<<")\n";
     server.showRequests(os, server.completedRequests);
+    os << "Rejected ("<<server.rejectedRequestsCount<<")\n";
+    os << "Total ("<<server.totalRequestsCount<<")\n";
+    os << "Max Waiting Queue Size ("<<server.maxWaitingQueueSize<<")\n";
+
     return os;
 }
 

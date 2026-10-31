@@ -345,7 +345,8 @@ void testServer()
     assert(&returnedStream == &emptyOutput);
     const std::string emptyText =
         "Server ID: 10 | Processing Speed: 2.5 workunits/sec per request\n"
-        "Waiting (0/3)\n    (none)\nActive (0/2)\n    (none)\nCompleted (0)\n    (none)\n";
+        "Waiting (0/3)\n    (none)\nActive (0/2)\n    (none)\nCompleted (0)\n    (none)\n"
+        "Rejected (0)\nTotal (0)\nMax Waiting Queue Size (0)\n";
     assert(emptyOutput.str() == emptyText);
     returnedStream << "end";
     assert(emptyOutput.str() == emptyText + "end");
@@ -382,7 +383,8 @@ void testServer()
         "Server ID: 12 | Processing Speed: 2 workunits/sec per request\n"
         "Waiting (1/2)\n    Request #22 | Arrival: 1.5 s | Work units: 1 | State: PENDING\n"
         "Active (1/1)\n    Request #21 | Arrival: 1 s | Work units: 4 | State: IN_PROGRESS"
-        "\n    Start: 1.5 s | Waiting: 0.5 s\nCompleted (0)\n    (none)\n";
+        "\n    Start: 1.5 s | Waiting: 0.5 s\nCompleted (0)\n    (none)\n"
+        "Rejected (0)\nTotal (2)\nMax Waiting Queue Size (1)\n";
     assert(beforeOutput.str() == beforeText);
     std::ostringstream repeatedOutput;
     repeatedOutput << constReport;
@@ -395,7 +397,8 @@ void testServer()
         "Waiting (1/2)\n    Request #22 | Arrival: 1.5 s | Work units: 1 | State: PENDING\n"
         "Active (0/1)\n    (none)\n"
         "Completed (1)\n    Request #21 | Arrival: 1 s | Work units: 4 | State: COMPLETED"
-        "\n    Start: 1.5 s | Finish: 3.5 s | Waiting: 0.5 s | Response: 2.5 s\n";
+        "\n    Start: 1.5 s | Finish: 3.5 s | Waiting: 0.5 s | Response: 2.5 s\n"
+        "Rejected (0)\nTotal (2)\nMax Waiting Queue Size (1)\n";
     assert(lateOutput.str() == lateText && "Late update must preserve scheduled completion, not observation time");
     report.waitingQueueToActive(10.0f);
     report.completeActiveRequest(10.5f);
@@ -696,4 +699,73 @@ void testServer()
     assert(fractionalResults[0].getWorkUnit() == 2.5f);
     assert(fractionalResults[0].responseTime() == 1.25f);
     assert(fractionalServer.getActiveQueueSize() == 0);
+
+    // Four simultaneous arrivals: one active, two waiting, one rejected.
+    Server statisticsServer(101, 1.0f, 2, 1);
+    const auto checkStatistics = [](const Server& server, int expectedCompleted,
+                                    int expectedRejected, int expectedTotal, int expectedPeak) {
+        int completedCount = -1;
+        int rejectedCount = -1;
+        int totalCount = -1;
+        int queuePeak = -1;
+        server.collectServerStatistics(completedCount, rejectedCount, totalCount, queuePeak);
+        assert(completedCount == expectedCompleted);
+        assert(rejectedCount == expectedRejected);
+        assert(totalCount == expectedTotal);
+        assert(queuePeak == expectedPeak);
+    };
+    checkStatistics(statisticsServer, 0, 0, 0, 0);
+    for (int requestId = 101; requestId <= 104; ++requestId) {
+        const bool wasAccepted = statisticsServer.submitRequest(
+            Request(requestId, 0.0f, 1.0f), 0.0f);
+        assert(wasAccepted == (requestId != 104));
+    }
+    assert(statisticsServer.getActiveQueueSize() == 1);
+    assert(statisticsServer.getWaitingQueueSize() == 2);
+    checkStatistics(statisticsServer, 0, 1, 4, 2);
+    std::ostringstream statisticsBeforeProcessing;
+    statisticsBeforeProcessing << statisticsServer;
+    assert(statisticsBeforeProcessing.str().find("Rejected (1)\n") != std::string::npos);
+    assert(statisticsBeforeProcessing.str().find("Total (4)\n") != std::string::npos);
+    assert(statisticsBeforeProcessing.str().find("Max Waiting Queue Size (2)\n") != std::string::npos);
+
+    std::vector<Request> statisticsRejected;
+    statisticsServer.collectRejectedRequests(statisticsRejected);
+    assert(statisticsRejected.size() == 1);
+    assert(statisticsRejected[0].getId() == 104);
+    assert(statisticsRejected[0].getState() == Request::State::REJECTED);
+    checkStatistics(statisticsServer, 0, 1, 4, 2);
+
+    for (int time = 1; time <= 3; ++time) {
+        statisticsServer.completeActiveRequest(static_cast<float>(time));
+        statisticsServer.waitingQueueToActive(static_cast<float>(time));
+        checkStatistics(statisticsServer, time, 1, 4, 2);
+    }
+    assert(statisticsServer.getActiveQueueSize() == 0);
+    assert(statisticsServer.getWaitingQueueSize() == 0);
+    std::vector<Request> statisticsCompleted;
+    statisticsServer.collectCompletedRequests(statisticsCompleted);
+    assert(statisticsCompleted.size() == 3);
+    for (std::size_t index = 0; index < statisticsCompleted.size(); ++index) {
+        assert(statisticsCompleted[index].getId() == 101 + static_cast<int>(index));
+        assert(statisticsCompleted[index].getState() == Request::State::COMPLETED);
+    }
+    // Collecting requests must preserve historical counters and the queue peak.
+    assert(statisticsServer.getCompletedQueueSize() == 0);
+    checkStatistics(statisticsServer, 3, 1, 4, 2);
+    checkStatistics(statisticsServer, 3, 1, 4, 2);
+    const Server statisticsCopy(statisticsServer);
+    checkStatistics(statisticsCopy, 3, 1, 4, 2);
+    Server statisticsAssigned(102, 1.0f, 0, 1);
+    statisticsAssigned = statisticsServer;
+    checkStatistics(statisticsAssigned, 3, 1, 4, 2);
+    const Server emptyStatistics(103, 1.0f, 0, 1);
+    statisticsAssigned = emptyStatistics;
+    checkStatistics(statisticsAssigned, 0, 0, 0, 0);
+    std::ostringstream statisticsAfterCollection;
+    statisticsAfterCollection << statisticsServer;
+    assert(statisticsAfterCollection.str().find("Completed (3)\n") != std::string::npos);
+    assert(statisticsAfterCollection.str().find("Rejected (1)\n") != std::string::npos);
+    assert(statisticsAfterCollection.str().find("Total (4)\n") != std::string::npos);
+    assert(statisticsAfterCollection.str().find("Max Waiting Queue Size (2)\n") != std::string::npos);
 }

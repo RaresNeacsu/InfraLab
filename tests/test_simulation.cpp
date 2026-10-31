@@ -362,7 +362,8 @@ void testSimulation()
     snapshotResult = snapshots.step();
     assert(snapshotResult == Simulation::StepResult::Completed);
     const SimulationReport remainingSnapshot = snapshots.collectReport();
-    assert(remainingSnapshot.getCompletedRequestsCount() == 2);
+    assert(remainingSnapshot.getCompletedRequestsCount() == 3);
+    assert(firstSnapshot.getCompletedRequestsCount() == 1);
     Simulation finishedServers(std::vector<Server>{busy, faster}, noTraffic, 20.0f);
     snapshotResult = finishedServers.step();
     assert(snapshotResult == Simulation::StepResult::Completed);
@@ -505,17 +506,20 @@ void testSimulation()
     result = boundaryCompletion.step();
     assert(result == Simulation::StepResult::Completed);
 
-    // test step() - no fallback and round robin after rejection ///////////////////////////////////////////
+    // test step() - skip a full server and resume after the accepting server ///////////////////////////////////////////
     Server occupiedA(40, 1.0f, 0, 1);
     const Server freeB(41, 1.0f, 0, 1);
     accepted = occupiedA.submitRequest(Request(40, 0.0f, 10), 0.0f);
     assert(accepted); // A remains busy until 10; B starts idle.
     Simulation rejectionRotation(std::vector<Server>{occupiedA, freeB},
         std::vector<Request>{Request(41, 1.0f, 1), Request(42, 3.0f, 1)}, 20.0f);
-    result = rejectionRotation.step(); // Arrival at 1 is assigned to full A.
+    result = rejectionRotation.step(); // Arrival at 1 skips full A and starts on B.
     assertCurrentTime(rejectionRotation, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
-    result = rejectionRotation.step(); // Arrival at 3 must advance to free B.
+    result = rejectionRotation.step(); // Request 41 finishes on B.
+    assertCurrentTime(rejectionRotation, 2.0f);
+    assert(result == Simulation::StepResult::EventProcessed);
+    result = rejectionRotation.step(); // Arrival at 3 skips full A again.
     assertCurrentTime(rejectionRotation, 3.0f);
     assert(result == Simulation::StepResult::EventProcessed);
     result = rejectionRotation.step();
@@ -596,10 +600,21 @@ void testSimulation()
     assert(originalCompleted[2].getId() == 51);
     assert(originalCompleted[2].waitingTime() == 0.0f);
     assert(originalCompleted[2].responseTime() == 3.0f);
-    const SimulationReport drainedReport = originalScenario.collectReport();
-    assert(drainedReport.getCompletedRequestsCount() == 0);
+    std::ostringstream beforeCollection;
+    beforeCollection << originalScenario;
+    const Simulation& constScenario = originalScenario;
+    const SimulationReport drainedReport = constScenario.collectReport();
+    std::ostringstream afterCollection;
+    afterCollection << originalScenario;
+    assert(beforeCollection.str() == afterCollection.str());
+    std::ostringstream firstReportText;
+    std::ostringstream secondReportText;
+    firstReportText << originalReport;
+    secondReportText << drainedReport;
+    assert(firstReportText.str() == secondReportText.str());
+    assert(drainedReport.getCompletedRequestsCount() == 3);
     assert(drainedReport.getRejectedRequestsCount() == 0);
-    assert(drainedReport.getCompletedRequests().empty());
+    assert(drainedReport.getCompletedRequests().size() == 3);
     assert(drainedReport.getRejectedRequests().empty());
     assert(originalReport.getCompletedRequestsCount() == 3 && "Collecting again must not change the previous report");
     assert(originalReport.averageWaitingTime() == 1.0f);
@@ -607,12 +622,12 @@ void testSimulation()
 
     // test collectReport() - completed and rejected results across servers ///////////////////////////////////////////
     const SimulationReport rotationReport = rejectionRotation.collectReport();
-    assert(rotationReport.getCompletedRequestsCount() == 2);
-    assert(rotationReport.getRejectedRequestsCount() == 1);
-    assert(rotationReport.getRejectedRequests().front().getId() == 41);
-    assert(rotationReport.getRejectedRequests().front().getState() == Request::State::REJECTED);
+    assert(rotationReport.getCompletedRequestsCount() == 3);
+    assert(rotationReport.getRejectedRequestsCount() == 0);
+    assert(rotationReport.getServerReports()[0].getTotalRequestsCount() == 1);
+    assert(rotationReport.getServerReports()[1].getTotalRequestsCount() == 2);
     const SimulationReport drainedRotation = rejectionRotation.collectReport();
-    assert(drainedRotation.getCompletedRequestsCount() == 0);
+    assert(drainedRotation.getCompletedRequestsCount() == 3);
     assert(drainedRotation.getRejectedRequestsCount() == 0);
 
     // test operator<< - empty traffic and const Simulation ///////////////////////////////////////////
@@ -712,4 +727,58 @@ void testSimulation()
     assert(fractionalSimulationReport.averageResponseTime() == 1.125f);
     assert(fractionalSimulationReport.getCompletedRequests()[0].getWorkUnit() == 1.5f);
     assert(fractionalSimulationReport.getCompletedRequests()[1].getWorkUnit() == 1.5f);
+    const auto& serverStatistics = fractionalSimulationReport.getServerReports();
+    assert(serverStatistics.size() == 1);
+    assert(serverStatistics[0].getId() == 100);
+    assert(serverStatistics[0].getCompletedRequestsCount() == 2);
+    assert(serverStatistics[0].getRejectedRequestsCount() == 0);
+    assert(serverStatistics[0].getTotalRequestsCount() == 2);
+    assert(serverStatistics[0].getMaxWaitingQueueSize() == 1);
+    std::ostringstream statisticsOutput;
+    statisticsOutput << fractionalSimulationReport;
+    assert(statisticsOutput.str().find(
+        "Server Statistics:\n  Server 100: Completed=2, Rejected=0, Total=2, MaxWaitingQueueSize=1\n")
+        != std::string::npos);
+    const auto secondCollection = fractionalSimulation.collectReport();
+    assert(secondCollection.getCompletedRequestsCount() == 2);
+    assert(secondCollection.getServerReports().size() == 1);
+    assert(secondCollection.getServerReports()[0].getCompletedRequestsCount() == 2);
+    assert(fractionalSimulationReport.getCompletedRequestsCount() == 2);
+
+    // Skip full A: accept on B, then C, then wrap around to B's queue.
+    Server fullA(201, 1.0f, 0, 1);
+    const bool seeded = fullA.submitRequest(Request(200, 0.0f, 10), 0.0f);
+    assert(seeded);
+    Simulation fallback(std::vector<Server>{fullA, Server(202, 1.0f, 1, 1), Server(203, 1.0f, 0, 1)},
+        std::vector<Request>{Request(201, 1.0f, 2), Request(202, 1.0f, 2),
+                             Request(203, 1.0f, 2), Request(204, 1.0f, 2)}, 20.0f);
+    result = fallback.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    const auto arrivalReport = fallback.collectReport();
+    assert(arrivalReport.getRejectedRequestsCount() == 1);
+    assert(arrivalReport.getRejectedRequests()[0].getId() == 204);
+    const auto& arrivalStats = arrivalReport.getServerReports();
+    assert(arrivalStats.size() == 3);
+    assert(arrivalStats[0].getTotalRequestsCount() == 1);
+    assert(arrivalStats[0].getRejectedRequestsCount() == 0);
+    assert(arrivalStats[1].getTotalRequestsCount() == 2);
+    assert(arrivalStats[1].getRejectedRequestsCount() == 0);
+    assert(arrivalStats[1].getMaxWaitingQueueSize() == 1);
+    // C was next after B accepted the third arrival; it records the rejection.
+    assert(arrivalStats[2].getTotalRequestsCount() == 2);
+    assert(arrivalStats[2].getRejectedRequestsCount() == 1);
+    int fallbackSteps = 0;
+    do {
+        result = fallback.step();
+        ++fallbackSteps;
+    } while (result == Simulation::StepResult::EventProcessed && fallbackSteps < 10);
+    assert(result == Simulation::StepResult::Completed);
+    const auto fallbackReport = fallback.collectReport();
+    assert(fallbackReport.getCompletedRequestsCount() == 4);
+    assert(fallbackReport.getRejectedRequestsCount() == 1);
+    const auto& fallbackCompleted = fallbackReport.getCompletedRequests();
+    assert(fallbackCompleted[0].getId() == 200);
+    assert(fallbackCompleted[1].getId() == 201);
+    assert(fallbackCompleted[2].getId() == 203);
+    assert(fallbackCompleted[3].getId() == 202);
 }

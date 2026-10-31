@@ -17,7 +17,8 @@ public:
     };
     Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, float maximumTime);
     StepResult step();
-    SimulationReport collectReport();
+    // Cumulative snapshot: collecting a report does not consume simulation history.
+    SimulationReport collectReport() const;
     ~Simulation() = default;
     friend std::ostream& operator<<(std::ostream& os, const Simulation& simulation);
 
@@ -29,6 +30,7 @@ private:
     std::size_t nextServerIndex = 0;
     float currentTime = 0.0f;
     float maximumTime;
+    
 };
 #endif // SIMULATION_H
 

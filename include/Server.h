@@ -23,6 +23,7 @@ class Server{
         int getCompletedQueueSize() const { return completedRequests.size(); }
 
         bool submitRequest(Request waitingRequest,float currentTime);
+        bool canAcceptRequest() const;
         void waitingQueueToActive(float currentTime);
         void completeActiveRequest(float currentTime);
         float nextCompletionTime() const;
@@ -32,6 +33,7 @@ class Server{
 
         void collectCompletedRequests(std::vector<Request>& completedQueue);
         void collectRejectedRequests(std::vector<Request>& rejectedQueue);
+        void collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& maxWaitingQueueSize) const;
     private:
         int id;
         float processingSpeed; //workunits per second
@@ -39,6 +41,10 @@ class Server{
         //current number of requests being queued - waitingRequests.size()
         int capacity; //maximum number of requests that can be processed simultaneously
         //current number of requests being processed - activeRequests.size()
+        int completedRequestsCount = 0; 
+        int rejectedRequestsCount = 0;
+        int totalRequestsCount = 0;
+        int maxWaitingQueueSize = 0;
         std::queue<Request> waitingRequests; //list of requests being queued
         std::queue<Request> activeRequests; //list of requests being processed
         std::queue<Request> completedRequests; //list of requests that have been completed

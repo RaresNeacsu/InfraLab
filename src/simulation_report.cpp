@@ -1,19 +1,19 @@
 #include "SimulationReport.h"
 #include <stdexcept>
 
-SimulationReport::SimulationReport(const std::vector<Request>& completedRequests, const std::vector<Request>& rejectedRequests) :
- completedRequests(completedRequests), rejectedRequests(rejectedRequests)
+SimulationReport::SimulationReport(const std::vector<Request> &completedRequests, const std::vector<Request> &rejectedRequests, const std::vector<ServerStats> &serverReports)
+    : completedRequests(completedRequests), rejectedRequests(rejectedRequests), serverReports(serverReports)
 {
-    for (const auto& request : completedRequests)
+    for (const auto &request : completedRequests)
     {
-        if(request.getState() != Request::State::COMPLETED)
+        if (request.getState() != Request::State::COMPLETED)
         {
             throw std::invalid_argument("All requests in completedRequests must be in COMPLETED state.");
         }
     }
-    for (const auto& request : rejectedRequests)
+    for (const auto &request : rejectedRequests)
     {
-        if(request.getState() != Request::State::REJECTED)
+        if (request.getState() != Request::State::REJECTED)
         {
             throw std::invalid_argument("All requests in rejectedRequests must be in REJECTED state.");
         }
@@ -22,12 +22,12 @@ SimulationReport::SimulationReport(const std::vector<Request>& completedRequests
 
 float SimulationReport::averageWaitingTime() const
 {
-    if(completedRequests.empty())
+    if (completedRequests.empty())
     {
         throw std::runtime_error("No completed requests to calculate average waiting time.");
     }
     float totalWaitingTime = 0.0f;
-    for(const auto& request : completedRequests)
+    for (const auto &request : completedRequests)
     {
         totalWaitingTime += request.waitingTime();
     }
@@ -36,34 +36,34 @@ float SimulationReport::averageWaitingTime() const
 
 float SimulationReport::averageResponseTime() const
 {
-    if(completedRequests.empty())
+    if (completedRequests.empty())
     {
-        throw std::runtime_error("No completed requests to calculate average response time."); 
+        throw std::runtime_error("No completed requests to calculate average response time.");
     }
     float totalResponseTime = 0.0f;
-    for(const auto& request : completedRequests)
+    for (const auto &request : completedRequests)
     {
         totalResponseTime += request.responseTime();
     }
     return totalResponseTime / completedRequests.size();
 }
 
-std::ostream& operator<<(std::ostream& os, const SimulationReport& report)
+std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
 {
     os << "SIMULATION REPORT\n=================\n\n";
     os << "Completed Requests: " << report.getCompletedRequestsCount() << "\n";
-    for(const auto& request : report.completedRequests)
+    for (const auto &request : report.completedRequests)
     {
         os << "  " << request << "\n";
     }
     os << "\n";
     os << "Rejected Requests: " << report.getRejectedRequestsCount() << "\n";
-    for(const auto& request : report.rejectedRequests)
+    for (const auto &request : report.rejectedRequests)
     {
         os << "  " << request << "\n";
     }
     os << "\n";
-    if(report.getCompletedRequestsCount() > 0)
+    if (report.getCompletedRequestsCount() > 0)
     {
         os << "Average Waiting Time: " << report.averageWaitingTime() << " s\n";
         os << "Average Response Time: " << report.averageResponseTime() << " s\n";
@@ -71,6 +71,16 @@ std::ostream& operator<<(std::ostream& os, const SimulationReport& report)
     else
     {
         os << "No completed requests to calculate average times.\n";
+    }
+    if (!report.serverReports.empty())
+    {
+        os << "\nServer Statistics:\n";
+        for (const auto& stats : report.serverReports)
+        {
+            os << "  " << stats << '\n';
+        }
+        os << "Rejected per server: global rejections attributed to the round-robin starting server\n"
+              "after every server was found full; not a measure of an individual server bottleneck.\n";
     }
     return os;
 }
