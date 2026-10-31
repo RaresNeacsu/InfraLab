@@ -33,7 +33,7 @@ class Server{
 
         void collectCompletedRequests(std::vector<Request>& completedQueue);
         void collectRejectedRequests(std::vector<Request>& rejectedQueue);
-        void collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& maxWaitingQueueSize) const;
+        void collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& queuePeak) const;
     private:
         int id;
         float processingSpeed; //workunits per second

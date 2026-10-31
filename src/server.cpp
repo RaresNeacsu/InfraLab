@@ -211,12 +211,12 @@ void Server::collectRejectedRequests(std::vector<Request>& rejectedQueue)
     }
 }
 
-void Server::collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& maxWaitingQueueSize) const
+void Server::collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& queuePeak) const
 {
     completedCount = this->completedRequestsCount;
     rejectedCount = this->rejectedRequestsCount;
     totalCount = this->totalRequestsCount;
-    maxWaitingQueueSize = this->maxWaitingQueueSize;
+    queuePeak = this->maxWaitingQueueSize;
 }
 
 Server& Server::operator=(const Server& other)
