@@ -35,4 +35,5 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& os, const Request& request);
+
 #endif // REQUEST_H

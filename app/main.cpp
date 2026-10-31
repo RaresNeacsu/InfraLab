@@ -5,11 +5,11 @@
 
 int main() {
     try {
-        std::ifstream serversFile = loadFromFile("assets/servers.json");
-        std::ifstream requestsFile = loadFromFile("assets/requests.json");
+        std::ifstream serversFile = fileLoading::loadFromFile("assets/servers.json");
+        std::ifstream requestsFile = fileLoading::loadFromFile("assets/requests.json");
 
-        std::vector<Server> servers = loadServersFromFile(serversFile);
-        std::vector<Request> requests = loadRequestsFromFile(requestsFile);
+        std::vector<Server> servers = fileLoading::loadServersFromFile(serversFile);
+        std::vector<Request> requests = fileLoading::loadRequestsFromFile(requestsFile);
 
         std::cout << "InfraLab - Infrastructure Simulation\n====================================\n\nLoaded " << servers.size() << " servers and " << requests.size() << " requests." << std::endl;
 
@@ -46,7 +46,7 @@ int main() {
         SimulationReport report = simulation.collectReport();
         std::cout << "\n" << report << std::endl;
 
-        std::ofstream reportFile = saveToFile("assets/simulation_report.txt");
+        std::ofstream reportFile = fileLoading::saveToFile("assets/simulation_report.txt");
         if (!reportFile) {
             throw std::runtime_error("Failed to create simulation report file.");
         }

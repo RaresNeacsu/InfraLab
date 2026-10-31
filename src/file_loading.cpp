@@ -1,27 +1,11 @@
-#include "file_loading.h"
 #include <fstream>
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <unordered_set>
+#include "file_loading.h"
 #include "Server.h"
 #include "Request.h"
-
-
-std::ifstream loadFromFile(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
-    return file;
-}
-std::ofstream saveToFile(const std::string& filename) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
-    }
-    return file;
-}
 namespace {
 int readInteger(const nlohmann::json& item, const char* field) {
     const auto& value = item.at(field);
@@ -39,10 +23,26 @@ int readInteger(const nlohmann::json& item, const char* field) {
         }
     }
     return value.get<int>();
-}
+    }
 }
 
-std::vector<Server> loadServersFromFile(std::istream &file) {
+
+std::ifstream fileLoading::loadFromFile(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+    return file;
+}
+std::ofstream fileLoading::saveToFile(const std::string& filename){
+    std::ofstream file(filename);
+    if(!file.is_open()){
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+    return file;
+}
+
+std::vector<Server> fileLoading::loadServersFromFile(std::istream &file) {
     nlohmann::json data;
     file >> data;
     if (!data.is_array()) {
@@ -59,7 +59,7 @@ std::vector<Server> loadServersFromFile(std::istream &file) {
     return servers;
 }
 
-std::vector<Request> loadRequestsFromFile(std::istream &file) {
+std::vector<Request> fileLoading::loadRequestsFromFile(std::istream &file) {
     nlohmann::json data;
     file >> data;
     if (!data.is_array()) {

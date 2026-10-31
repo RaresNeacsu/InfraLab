@@ -1,99 +1,140 @@
 #undef NDEBUG
 #include <cassert>
-#include <fstream>
+#include <exception>
 #include <sstream>
 #include <stdexcept>
+
 #include "file_loading.h"
-#include "file_loading.h"
 
-
-
+namespace {
+template <typename Exception, typename Operation>
+void expectException(Operation operation)
+{
+    bool caught = false;
+    try {
+        operation();
+    } catch (const Exception&) {
+        caught = true;
+    }
+    assert(caught && "Expected file loading to reject invalid input");
+}
+}
 
 void testFileLoading()
 {
-    std::ifstream serversJson = loadFromFile("assets/servers.json");
-    std::ifstream requestsJson = loadFromFile("assets/requests.json");
-    const auto servers = loadServersFromFile(serversJson);
-    const auto requests = loadRequestsFromFile(requestsJson);
+    std::istringstream serversInput(R"([
+        {"id":7,"processing_speed":2.5,"waiting_queue_limit":0,"capacity":3},
+        {"id":9,"processing_speed":1,"waiting_queue_limit":4,"capacity":1}
+    ])");
+    const auto servers = fileLoading::loadServersFromFile(serversInput);
+    assert(servers.size() == 2);
+    assert(servers[0].getId() == 7);
+    assert(servers[0].getProcessingSpeed() == 2.5f);
+    assert(servers[0].getWaitingQueueLimit() == 0);
+    assert(servers[0].getCapacity() == 3);
+    assert(servers[0].getActiveQueueSize() == 0);
+    assert(servers[0].getWaitingQueueSize() == 0);
+    assert(servers[1].getId() == 9);
+    assert(servers[1].getProcessingSpeed() == 1.0f);
+    assert(servers[1].getWaitingQueueLimit() == 4);
+    assert(servers[1].getCapacity() == 1);
 
-    assert(servers.size() == 4);
-    assert(servers[0].getId() == 1);
-    assert(servers[0].getProcessingSpeed() == 1.0f);
-    assert(servers[0].getWaitingQueueLimit() == 2);
-    assert(servers[3].getId() == 4);
-    assert(servers[3].getCapacity() == 3);
-    assert(requests.size() == 24);
-    assert(requests[0].getId() == 1);
+    std::istringstream requestsInput(R"([
+        {"id":8,"arrival_time":0,"work_units":0.25},
+        {"id":2,"arrival_time":1.5,"work_units":4}
+    ])");
+    const auto requests = fileLoading::loadRequestsFromFile(requestsInput);
+    assert(requests.size() == 2);
+    assert(requests[0].getId() == 8);
     assert(requests[0].getArrivalTime() == 0.0f);
-    assert(requests[0].getWorkUnit() == 2.0f);
-    assert(requests[23].getId() == 24);
-    assert(requests[23].getArrivalTime() == 8.0f);
-    assert(requests[23].getWorkUnit() == 3.0f);
+    assert(requests[0].getWorkUnit() == 0.25f);
+    assert(requests[0].getState() == Request::State::PENDING);
+    assert(requests[1].getId() == 2);
+    assert(requests[1].getArrivalTime() == 1.5f);
+    assert(requests[1].getWorkUnit() == 4.0f);
+    assert(requests[1].getState() == Request::State::PENDING);
 
-    for (const char* invalid : {
-        R"([{"id":1.5,"arrival_time":0,"work_units":1}])",
-        R"([{"id":2147483648,"arrival_time":0,"work_units":1}])",
-        R"([{"id":-2147483649,"arrival_time":0,"work_units":1}])"}) {
-        std::istringstream input(invalid);
-        bool caught = false;
-        try { loadRequestsFromFile(input); }
-        catch (const std::exception&) { caught = true; }
-        assert(caught);
+    std::istringstream emptyServers("[]");
+    const auto noServers = fileLoading::loadServersFromFile(emptyServers);
+    assert(noServers.empty());
+    std::istringstream emptyRequests("[]");
+    const auto noRequests = fileLoading::loadRequestsFromFile(emptyRequests);
+    assert(noRequests.empty());
+
+    // Parsing errors belong to the private JSON dependency; test rejection
+    // through the public interface without including that dependency here.
+    for (const char* invalidJson : {"", "[", "[{}", "not json", "{}", "null", "42"}) {
+        expectException<std::exception>([&] {
+            std::istringstream input(invalidJson);
+            fileLoading::loadServersFromFile(input);
+        });
+        expectException<std::exception>([&] {
+            std::istringstream input(invalidJson);
+            fileLoading::loadRequestsFromFile(input);
+        });
     }
-    for (const char* invalid : {
-        R"([{"id":1.5,"processing_speed":1,"waiting_queue_limit":1,"capacity":1}])",
-        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":1.5,"capacity":1}])",
-        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":1,"capacity":1.5}])",
-        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":1,"capacity":2147483648}])",
-        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":-2147483649,"capacity":1}])"}) {
-        std::istringstream input(invalid);
-        bool caught = false;
-        try { loadServersFromFile(input); }
-        catch (const std::exception&) { caught = true; }
-        assert(caught);
+
+    for (const char* invalidServer : {
+        R"([{"id":1,"waiting_queue_limit":0,"capacity":1}])",
+        R"([{"id":1,"processing_speed":"fast","waiting_queue_limit":0,"capacity":1}])",
+        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":null}])"
+    }) {
+        expectException<std::exception>([&] {
+            std::istringstream input(invalidServer);
+            fileLoading::loadServersFromFile(input);
+        });
     }
-    // Malformed JSON, missing fields, and non-array roots must be rejected.
-    for (const char* invalid : {
-        "[{",
+
+    for (const char* invalidRequest : {
         R"([{"id":1,"arrival_time":0}])",
-        R"({"id":1,"arrival_time":0,"work_units":1})"}) {
-        std::istringstream input(invalid);
-        bool caught = false;
-        try { loadRequestsFromFile(input); }
-        catch (const std::exception&) { caught = true; }
-        assert(caught);
+        R"([{"id":1,"arrival_time":"later","work_units":1}])",
+        R"([{"id":1,"arrival_time":0,"work_units":null}])"
+    }) {
+        expectException<std::exception>([&] {
+            std::istringstream input(invalidRequest);
+            fileLoading::loadRequestsFromFile(input);
+        });
     }
-    for (const char* invalid : {
-        "[{",
-        R"([{"id":1,"processing_speed":1,"capacity":1}])",
-        R"({"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1})"}) {
-        std::istringstream input(invalid);
-        bool caught = false;
-        try { loadServersFromFile(input); }
-        catch (const std::exception&) { caught = true; }
-        assert(caught);
+
+    for (const char* invalidServer : {
+        R"([{"id":0,"processing_speed":1,"waiting_queue_limit":0,"capacity":1}])",
+        R"([{"id":1,"processing_speed":0,"waiting_queue_limit":0,"capacity":1}])",
+        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":-1,"capacity":1}])",
+        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":0}])",
+        R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1.5}])"
+    }) {
+        expectException<std::invalid_argument>([&] {
+            std::istringstream input(invalidServer);
+            fileLoading::loadServersFromFile(input);
+        });
     }
-    // Constructors reject invalid domain values after JSON parsing.
-    std::istringstream invalidRequest(R"([{"id":1,"arrival_time":0,"work_units":0}])");
-    bool requestRejected = false;
-    try { loadRequestsFromFile(invalidRequest); }
-    catch (const std::invalid_argument&) { requestRejected = true; }
-    assert(requestRejected);
-    std::istringstream invalidServer(R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":0}])");
-    bool serverRejected = false;
-    try { loadServersFromFile(invalidServer); }
-    catch (const std::invalid_argument&) { serverRejected = true; }
-    assert(serverRejected);
-    // An ID identifies one request even when its data differs.
-    std::istringstream duplicates(R"([{"id":1,"arrival_time":0,"work_units":1},{"id":1,"arrival_time":1,"work_units":2}])");
-    bool duplicateRejected = false;
-    try { loadRequestsFromFile(duplicates); }
-    catch (const std::invalid_argument&) { duplicateRejected = true; }
-    assert(duplicateRejected);
-    std::istringstream distinct(R"([{"id":1,"arrival_time":0,"work_units":1},{"id":2,"arrival_time":0,"work_units":1}])");
-    assert(loadRequestsFromFile(distinct).size() == 2);
-    std::istringstream valid(R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1}])");
-    assert(loadServersFromFile(valid).size() == 1);
 
+    for (const char* invalidRequest : {
+        R"([{"id":0,"arrival_time":0,"work_units":1}])",
+        R"([{"id":1,"arrival_time":-1,"work_units":1}])",
+        R"([{"id":1,"arrival_time":0,"work_units":0}])",
+        R"([{"id":1.5,"arrival_time":0,"work_units":1}])",
+        R"([{"id":true,"arrival_time":0,"work_units":1}])",
+        R"([{"id":1,"arrival_time":0,"work_units":1},
+            {"id":1,"arrival_time":2,"work_units":3}])"
+    }) {
+        expectException<std::invalid_argument>([&] {
+            std::istringstream input(invalidRequest);
+            fileLoading::loadRequestsFromFile(input);
+        });
+    }
 
+    // Both signed and unsigned JSON integers must fit the public int ID type.
+    for (const char* id : {"9223372036854775807", "18446744073709551615", "-9223372036854775808"}) {
+        expectException<std::out_of_range>([&] {
+            std::istringstream input(std::string("[{\"id\":") + id +
+                ",\"arrival_time\":0,\"work_units\":1}]");
+            fileLoading::loadRequestsFromFile(input);
+        });
+        expectException<std::out_of_range>([&] {
+            std::istringstream input(std::string("[{\"id\":") + id +
+                ",\"processing_speed\":1,\"waiting_queue_limit\":0,\"capacity\":1}]");
+            fileLoading::loadServersFromFile(input);
+        });
+    }
 }
