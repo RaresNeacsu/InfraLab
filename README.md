@@ -5,6 +5,27 @@ It models how incoming requests are distributed across servers, queued, and proc
 Infrastructure and traffic scenarios are defined in configuration files. 
 Simulation reports provide waiting times, response times, and completed request counts, helping users identify bottlenecks and compare server configurations.
 
+## Rulare și scenarii
+
+După compilare, din rădăcina proiectului:
+
+```sh
+./build/oop_main                                  # normal: 12 cereri
+./build/oop_main assets/requests_burst.json       # burst: 19 cereri
+./build/oop_main assets/requests_overload.json    # overload: 32 de cereri
+```
+
+Serverele sunt citite din `assets/servers.json`. Introduceți limita de timp, de exemplu `10` secunde.
+Stările simulării apar în terminal, iar raportul se salvează în `assets/simulation_report.txt`.
+Căile sunt relative la directorul din care rulați programul.
+
+Raportul păstrează toate rezultatele de până atunci. Colectarea nu golește istoricul;
+vectorul primit este înlocuit cu rezultatele curente. Timpii sunt calculați doar pentru
+cererile finalizate; fără finalizări apare `N/A`. Procentele folosesc totalul atribuit serverului.
+
+Rutarea sare peste serverele pline. Cererea este respinsă numai dacă toate sunt pline,
+iar respingerea este trecută la serverul de la care a început căutarea.
+
 ### Folosiți template-ul corespunzător grupei voastre!
 
 | Laborant  | Link template                                |
@@ -61,6 +82,8 @@ O cerință nu se consideră îndeplinită dacă este realizată doar prin cod g
 - [x] tag de `git`: de exemplu `v0.1`
 - [x] serviciu de integrare continuă (CI) cu **toate bifele**; exemplu: GitHub Actions
 - [x] code review #1 2 proiecte
+
+Procentul C++ trebuie reverificat fără teste și cod extern.
 
 ## Tema 2
 
