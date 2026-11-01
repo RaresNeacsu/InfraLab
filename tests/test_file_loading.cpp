@@ -1,12 +1,37 @@
 #undef NDEBUG
 #include <cassert>
 #include <exception>
+#include <filesystem>
+#include <chrono>
+#include <system_error>
 #include <sstream>
 #include <stdexcept>
 
 #include "file_loading.h"
 
 namespace {
+class TemporaryDirectory {
+public:
+    TemporaryDirectory()
+    {
+        const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        for (int attempt = 0; attempt < 100; ++attempt) {
+            directory = std::filesystem::temp_directory_path() /
+                ("infralab-file-tests-" + std::to_string(stamp) + "-" + std::to_string(attempt));
+            if (std::filesystem::create_directory(directory)) return;
+        }
+        throw std::runtime_error("Could not create a temporary test directory.");
+    }
+    ~TemporaryDirectory()
+    {
+        std::error_code error;
+        std::filesystem::remove_all(directory, error);
+    }
+    const std::filesystem::path& path() const { return directory; }
+private:
+    std::filesystem::path directory;
+};
+
 template <typename Exception, typename Operation>
 void expectException(Operation operation)
 {
@@ -137,4 +162,55 @@ void testFileLoading()
             fileLoading::loadServersFromFile(input);
         });
     }
+    expectException<std::invalid_argument>([] {
+        std::istringstream input(R"([
+            {"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1},
+            {"id":1,"processing_speed":2,"waiting_queue_limit":0,"capacity":1}
+        ])");
+        fileLoading::loadServersFromFile(input);
+    });
+    for (const char* invalidNumeric : {
+        R"([{"id":1,"arrival_time":true,"work_units":1}])",
+        R"([{"id":1,"arrival_time":0,"work_units":true}])"
+    }) {
+        expectException<std::invalid_argument>([&] {
+            std::istringstream input(invalidNumeric);
+            fileLoading::loadRequestsFromFile(input);
+        });
+    }
+    expectException<std::invalid_argument>([] {
+        std::istringstream input(R"([{"id":1,"processing_speed":true,"waiting_queue_limit":0,"capacity":1}])");
+        fileLoading::loadServersFromFile(input);
+    });
+    TemporaryDirectory temporary;
+    const auto missing = (temporary.path() / "missing.json").string();
+    expectException<std::runtime_error>([&] { fileLoading::loadFromFile(missing); });
+    const auto requestPath = (temporary.path() / "requests.json").string();
+    {
+        auto output = fileLoading::saveToFile(requestPath);
+        output << R"([{"id":17,"arrival_time":0.25,"work_units":1.5}])";
+        output.close();
+        assert(output);
+    }
+    {
+        auto input = fileLoading::loadFromFile(requestPath);
+        const auto loadedRequests = fileLoading::loadRequestsFromFile(input);
+        assert(loadedRequests.size() == 1);
+        assert(loadedRequests[0].getId() == 17);
+        assert(loadedRequests[0].getArrivalTime() == 0.25);
+        assert(loadedRequests[0].getWorkUnit() == 1.5);
+    }
+    expectException<std::runtime_error>([&] {
+        fileLoading::saveToFile((temporary.path() / "missing-parent" / "report.txt").string());
+    });
+    {
+        auto output = fileLoading::saveToFile(requestPath);
+        output << "[]";
+        output.close();
+        assert(output);
+        auto input = fileLoading::loadFromFile(requestPath);
+        const auto overwrittenRequests = fileLoading::loadRequestsFromFile(input);
+        assert(overwrittenRequests.empty());
+    }
+
 }
