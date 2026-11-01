@@ -9,8 +9,8 @@ class SimulationReport
 {
     public:
         SimulationReport(const std::vector<Request>& completedRequests, const std::vector<Request>& rejectedRequests, const std::vector<ServerStats>& serverReports = {});
-        float averageWaitingTime() const;
-        float averageResponseTime() const;
+        double averageWaitingTime() const;
+        double averageResponseTime() const;
         int getCompletedRequestsCount() const { return completedRequests.size(); }
         int getRejectedRequestsCount() const { return rejectedRequests.size(); }
         const std::vector<Request>& getCompletedRequests() const { return completedRequests; }

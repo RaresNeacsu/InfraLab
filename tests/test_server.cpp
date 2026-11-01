@@ -414,125 +414,43 @@ void testServer()
     chainedOutput << printableEmpty << constReport;
     assert(chainedOutput.str() == emptyText + finalOutput.str());
 
-    // test collection methods - empty queues and setup ///////////////////////////////////////////
-    Server collection(13, 2.0f, 1, 2);
-    Request seed(30, 0.0f, 1);
-    std::vector<Request> collectedCompleted{seed};
-    std::vector<Request> collectedRejected{seed};
+    // Collection returns cumulative snapshots and replaces destination contents.
+    Server collection(13, 2.0, 1, 2);
+    std::vector<Request> collectedCompleted{Request(30, 0.0, 1.0)};
+    std::vector<Request> collectedRejected{Request(30, 0.0, 1.0)};
     collection.collectCompletedRequests(collectedCompleted);
     collection.collectRejectedRequests(collectedRejected);
-    assert(collectedCompleted.size() == 1 && collectedCompleted.front().getId() == 30);
-    assert(collectedRejected.size() == 1 && collectedRejected.front().getId() == 30);
-
-    Request slow(31, 1.0f, 4);
-    Request fast(32, 1.0f, 1);
-    Request queuedRequest(33, 1.0f, 2);
-    Request refusedFirst(34, 1.0f, 1);
-    Request refusedSecond(35, 1.0f, 3);
-    accepted = collection.submitRequest(slow, 1.25f);
-    assert(accepted);
-    accepted = collection.submitRequest(fast, 1.25f);
-    assert(accepted);
-    accepted = collection.submitRequest(queuedRequest, 1.25f);
-    assert(accepted);
-    accepted = collection.submitRequest(refusedFirst, 1.25f);
-    assert(!accepted);
-    accepted = collection.submitRequest(refusedSecond, 1.25f);
-    assert(!accepted);
-    collection.completeActiveRequest(1.75f);
-    assert(collection.getActiveQueueSize() == 1);
-    assert(collection.getWaitingQueueSize() == 1);
-    assert(collection.getCompletedQueueSize() == 1);
-
-    // test collectCompletedRequests() ///////////////////////////////////////////
-    collection.collectCompletedRequests(collectedCompleted);
-    assert(collectedCompleted.size() == 2 && "Collection must append rather than replace destination contents");
-    assert(collectedCompleted[0].getId() == 30);
-    assert(collectedCompleted[1].getId() == 32);
-    assert(collectedCompleted[1].getState() == Request::State::COMPLETED);
-    assert(collectedCompleted[1].getArrivalTime() == 1.0f);
-    assert(collectedCompleted[1].getWorkUnit() == 1);
-    assert(collectedCompleted[1].getStartTime() == 1.25f);
-    assert(collectedCompleted[1].waitingTime() == 0.25f);
-    assert(collectedCompleted[1].responseTime() == 0.75f);
-    assert(collection.getCompletedQueueSize() == 0);
-    assert(collection.getActiveQueueSize() == 1 && "Completed collection must preserve active Requests");
-    assert(collection.getWaitingQueueSize() == 1 && "Completed collection must preserve waiting Requests");
-    collection.collectCompletedRequests(collectedCompleted);
-    assert(collectedCompleted.size() == 2 && "Repeated collection must not duplicate Requests");
-
-    // test collectRejectedRequests() ///////////////////////////////////////////
-    collection.collectRejectedRequests(collectedRejected);
-    assert(collectedRejected.size() == 3 && "Rejected collection must append every refused Request");
-    assert(collectedRejected[0].getId() == 30);
-    assert(collectedRejected[1].getId() == 34);
-    assert(collectedRejected[2].getId() == 35 && "Rejected Requests must retain admission order");
-    for (std::size_t i = 1; i < collectedRejected.size(); ++i)
-    {
-        assert(collectedRejected[i].getState() == Request::State::REJECTED);
-        assert(collectedRejected[i].getArrivalTime() == 1.0f);
-        assert(collectedRejected[i].getStartTime() == -1.0f);
-        caught = false;
-        try
-        {
-            collectedRejected[i].waitingTime();
-        }
-        catch (const std::invalid_argument&)
-        {
-            caught = true;
-        }
-        assert(caught && "Collected rejected Requests must remain unstarted");
+    assert(collectedCompleted.empty());
+    assert(collectedRejected.empty());
+    for (int id = 31; id <= 35; ++id) {
+        const bool admitted = collection.submitRequest(Request(id, 0.0, 1.0), 0.0);
+        assert(admitted == (id <= 33));
     }
-    assert(collectedRejected[1].getWorkUnit() == 1);
-    assert(collectedRejected[2].getWorkUnit() == 3);
-    assert(refusedFirst.getState() == Request::State::PENDING);
-    assert(refusedSecond.getState() == Request::State::PENDING);
-    collection.collectRejectedRequests(collectedRejected);
-    assert(collectedRejected.size() == 3 && "Rejected collection must drain the internal history");
-    assert(collection.getActiveQueueSize() == 1);
+    collection.completeActiveRequest(0.5);
+    const Server& collectionView = collection;
+    collectionView.collectCompletedRequests(collectedCompleted);
+    collectionView.collectRejectedRequests(collectedRejected);
+    assert(collectedCompleted.size() == 2);
+    assert(collectedCompleted[0].getId() == 31);
+    assert(collectedCompleted[1].getId() == 32);
+    assert(collectedCompleted[0].responseTime() == 0.5);
+    assert(collectedRejected.size() == 2);
+    assert(collectedRejected[0].getId() == 34);
+    assert(collectedRejected[1].getId() == 35);
+    assert(collectedRejected[0].getState() == Request::State::REJECTED);
+    collectionView.collectCompletedRequests(collectedCompleted);
+    collectionView.collectRejectedRequests(collectedRejected);
+    assert(collectedCompleted.size() == 2);
+    assert(collectedRejected.size() == 2);
+    assert(collection.getCompletedQueueSize() == 2);
     assert(collection.getWaitingQueueSize() == 1);
-
-    // test collection methods - further processing and batches ///////////////////////////////////////////
-    collection.completeActiveRequest(10.0f);
-    collection.waitingQueueToActive(10.0f);
-    collection.completeActiveRequest(11.0f);
-    collection.collectRejectedRequests(collectedRejected);
-    assert(collectedRejected.size() == 3);
-    assert(collection.getCompletedQueueSize() == 2 && "Rejected collection must preserve completed history");
-    collection.collectCompletedRequests(collectedCompleted);
-    assert(collectedCompleted.size() == 4);
-    assert(collectedCompleted[2].getId() == 31);
-    assert(collectedCompleted[3].getId() == 33 && "Completed collection must preserve history order");
-    assert(collectedCompleted[2].responseTime() == 2.25f && "Late collection must preserve scheduled completion");
-    assert(collectedCompleted[3].waitingTime() == 9.0f);
-    assert(collectedCompleted[3].responseTime() == 10.0f);
-    assert(collection.getCompletedQueueSize() == 0);
-    assert(collection.getWaitingQueueSize() == 0);
-    assert(collection.getActiveQueueSize() == 0);
-    assert(collectedCompleted[1].responseTime() == 0.75f && "Previously collected Requests must remain valid");
-
-    // test collection methods - empty destinations and repeated collection ///////////////////////////////////////////
-    Server secondBatch(14, 1.0f, 0, 1);
-    std::vector<Request> emptyCompleted;
-    std::vector<Request> emptyRejected;
-    secondBatch.collectCompletedRequests(emptyCompleted);
-    secondBatch.collectRejectedRequests(emptyRejected);
-    assert(emptyCompleted.empty() && emptyRejected.empty());
-    accepted = secondBatch.submitRequest(seed, 0.0f);
-    assert(accepted);
-    accepted = secondBatch.submitRequest(refusedFirst, 1.0f);
-    assert(!accepted);
-    secondBatch.collectRejectedRequests(emptyRejected);
-    assert(emptyRejected.size() == 1 && emptyRejected[0].getId() == 34);
-    accepted = secondBatch.submitRequest(refusedSecond, 1.0f);
-    assert(!accepted);
-    secondBatch.collectRejectedRequests(emptyRejected);
-    assert(emptyRejected.size() == 2 && emptyRejected[1].getId() == 35);
-    secondBatch.completeActiveRequest(1.0f);
-    secondBatch.collectCompletedRequests(emptyCompleted);
-    assert(emptyCompleted.size() == 1 && emptyCompleted[0].getId() == 30);
-    assert(emptyCompleted[0].getState() == Request::State::COMPLETED);
-    assert(emptyCompleted[0].responseTime() == 1.0f);
+    collection.waitingQueueToActive(0.5);
+    collection.completeActiveRequest(1.0);
+    collectionView.collectCompletedRequests(collectedCompleted);
+    assert(collectedCompleted.size() == 3);
+    assert(collectedCompleted[2].getId() == 33);
+    assert(collectedCompleted[2].waitingTime() == 0.5);
+    assert(collection.getCompletedQueueSize() == 3);
 
     // test nextCompletionTime() ///////////////////////////////////////////
     Server completionQuery(15, 2.0f, 1, 2);
@@ -660,7 +578,7 @@ void testServer()
     assert(sourceRejected.size() == 1 && sourceRejected[0].getId() == 73 &&
            "Collecting the copy must not drain the source rejection history");
     assignmentTarget.collectRejectedRequests(targetRejected);
-    assert(targetRejected.size() == 1 && "Copied rejected history must be drained independently");
+    assert(targetRejected.size() == 1 && "Repeated collection must preserve the copied history");
 
     // test operator= - empty source clears every destination queue ///////////////////////////////////////////
     const Server emptyAssignmentSource(92, 3.5f, 0, 1);
@@ -751,7 +669,7 @@ void testServer()
         assert(statisticsCompleted[index].getState() == Request::State::COMPLETED);
     }
     // Collecting requests must preserve historical counters and the queue peak.
-    assert(statisticsServer.getCompletedQueueSize() == 0);
+    assert(statisticsServer.getCompletedQueueSize() == 3);
     checkStatistics(statisticsServer, 3, 1, 4, 2);
     checkStatistics(statisticsServer, 3, 1, 4, 2);
     const Server statisticsCopy(statisticsServer);

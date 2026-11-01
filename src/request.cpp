@@ -2,7 +2,7 @@
 #include <cmath>
 #include <stdexcept>
 
-Request::Request(int id, float arrivalTime, float workUnit) : id(id), arrivalTime(arrivalTime), workUnit(workUnit), state(State::PENDING)
+Request::Request(int id, double arrivalTime, double workUnit) : id(id), arrivalTime(arrivalTime), workUnit(workUnit), state(State::PENDING)
 {
     if (id <= 0)
     {
@@ -10,19 +10,19 @@ Request::Request(int id, float arrivalTime, float workUnit) : id(id), arrivalTim
     }
     if (arrivalTime < 0.0f || std::isnan(arrivalTime) || std::isinf(arrivalTime))
     {
-        throw std::invalid_argument("Arrival time must be a valid non-negative float.");
+        throw std::invalid_argument("Arrival time must be a valid non-negative double.");
     }
     if (workUnit <= 0.0f || std::isnan(workUnit) || std::isinf(workUnit))
     {
-        throw std::invalid_argument("Work unit must be a valid positive float.");
+        throw std::invalid_argument("Work unit must be a valid positive double.");
     }
 }
 
-void Request::start(float requestStartTime)
+void Request::start(double requestStartTime)
 {
     if(requestStartTime < 0.0f || std::isnan(requestStartTime)|| std::isinf(requestStartTime))
     {
-        throw std::invalid_argument("Start time must be a valid non-negative float.");
+        throw std::invalid_argument("Start time must be a valid non-negative double.");
     }
     if(state == State::PENDING)
     {
@@ -38,11 +38,11 @@ void Request::start(float requestStartTime)
         throw std::invalid_argument("Request can only be started if it is in PENDING state.");
     }
 }
-void Request::complete(float requestFinishTime)
+void Request::complete(double requestFinishTime)
 {
     if(requestFinishTime < 0.0f || std::isnan(requestFinishTime) || std::isinf(requestFinishTime))
     {
-        throw std::invalid_argument("Finish time must be a valid non-negative float.");
+        throw std::invalid_argument("Finish time must be a valid non-negative double.");
     }
     if(state == State::IN_PROGRESS)
     {
@@ -71,7 +71,7 @@ void Request::reject()
     }
 }
 
-float Request::waitingTime() const
+double Request::waitingTime() const
 {
     if(state == State::IN_PROGRESS || state == State::COMPLETED)
     {
@@ -83,7 +83,7 @@ float Request::waitingTime() const
     }   
 }
 
-float Request::responseTime() const
+double Request::responseTime() const
 {
     if(state == State::COMPLETED)
     {

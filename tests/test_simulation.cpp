@@ -740,6 +740,12 @@ void testSimulation()
         "Server Statistics:\n  Server 100: Completed=2, Rejected=0, Total=2, MaxWaitingQueueSize=1\n")
         != std::string::npos);
     const auto secondCollection = fractionalSimulation.collectReport();
+    assert(statisticsOutput.str().find(
+        "Average waiting=0.375 s, Max waiting=0.75 s, Average response=1.125 s, Max response=1.5 s")
+        != std::string::npos);
+    std::ostringstream repeatedTimingOutput;
+    repeatedTimingOutput << secondCollection;
+    assert(repeatedTimingOutput.str() == statisticsOutput.str());
     assert(secondCollection.getCompletedRequestsCount() == 2);
     assert(secondCollection.getServerReports().size() == 1);
     assert(secondCollection.getServerReports()[0].getCompletedRequestsCount() == 2);
@@ -781,4 +787,77 @@ void testSimulation()
     assert(fallbackCompleted[1].getId() == 201);
     assert(fallbackCompleted[2].getId() == 203);
     assert(fallbackCompleted[3].getId() == 202);
+
+    Simulation separateTimings(std::vector<Server>{Server(301, 1.0f, 0, 1), Server(302, 2.0f, 0, 1)},
+        std::vector<Request>{Request(301, 0.0f, 1.0f), Request(302, 0.0f, 0.5f)}, 10.0f);
+    for (int step = 0; step < 4; ++step) {
+        result = separateTimings.step();
+    }
+    assert(result == Simulation::StepResult::Completed);
+    const auto separateTimingReport = separateTimings.collectReport();
+    assert(separateTimingReport.getServerReports().size() == 2);
+    for (std::size_t index = 0; index < 2; ++index) {
+        std::ostringstream serverTimingOutput;
+        serverTimingOutput << separateTimingReport.getServerReports()[index];
+        const std::string expected = index == 0
+            ? "Average waiting=0 s, Max waiting=0 s, Average response=1 s, Max response=1 s"
+            : "Average waiting=0 s, Max waiting=0 s, Average response=0.25 s, Max response=0.25 s";
+        assert(serverTimingOutput.str().find(expected) != std::string::npos);
+    }
+    std::ostringstream unfinishedTimingOutput;
+    unfinishedTimingOutput << lateCompletionReport;
+    assert(unfinishedTimingOutput.str().find("Average waiting=N/A") != std::string::npos);
+    Simulation preciseTime({Server(401, 1.0, 0, 1)},
+        {Request(401, 16777216.0, 1.0)}, 16777218.0);
+    result = preciseTime.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    result = preciseTime.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    result = preciseTime.step();
+    assert(result == Simulation::StepResult::Completed);
+    assert(preciseTime.collectReport().getCompletedRequests()[0].responseTime() == 1.0);
+
+    Simulation longDuration({Server(402, 1e-30, 0, 1)}, {Request(402, 0.0, 1e30)}, 10.0);
+    result = longDuration.step();
+    assert(result == Simulation::StepResult::EventProcessed);
+    result = longDuration.step();
+    assert(result == Simulation::StepResult::TimeLimitReached);
+    assert(longDuration.collectReport().getCompletedRequestsCount() == 0);
+
+    for (const double speed : {std::numeric_limits<double>::min(), 1.0}) {
+        const double work = speed == 1.0 ? 1.0 : std::numeric_limits<double>::max();
+        const double arrival = speed == 1.0 ? 1e20 : 0.0;
+        Simulation invalidDuration({Server(403, speed, 0, 1)},
+            {Request(403, arrival, work)}, 1e21);
+        bool durationRejected = false;
+        try {
+            invalidDuration.step();
+        } catch (const std::overflow_error&) {
+            durationRejected = true;
+        }
+        assert(durationRejected);
+        const auto failedReport = invalidDuration.collectReport();
+        assert(failedReport.getServerReports()[0].getTotalRequestsCount() == 0);
+    }
+
+    Server historyServer(404, 1.0, 0, 1);
+    const bool historyAccepted = historyServer.submitRequest(Request(404, 0.0, 1.0), 0.0);
+    assert(historyAccepted);
+    historyServer.completeActiveRequest(1.0);
+    std::vector<Request> previouslyCollected;
+    historyServer.collectCompletedRequests(previouslyCollected);
+    Simulation preservedHistory({historyServer}, {}, 10.0);
+    const auto preservedReport = preservedHistory.collectReport();
+    assert(previouslyCollected.size() == 1);
+    assert(preservedReport.getCompletedRequestsCount() == 1);
+    assert(preservedReport.getServerReports()[0].getCompletedRequestsCount() == 1);
+
+    bool duplicateServerRejected = false;
+    try {
+        const Simulation duplicateServers({Server(405, 1.0, 0, 1), Server(405, 2.0, 0, 1)}, {}, 10.0);
+    } catch (const std::invalid_argument&) {
+        duplicateServerRejected = true;
+    }
+    assert(duplicateServerRejected);
+
 }

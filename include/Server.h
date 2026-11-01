@@ -8,35 +8,36 @@ class Server{
     private:
         void removeWaitingRequestQueue();
         void removeRequestActive();
-        void addRequestActive(Request waitingRequest,float currentTime);
+        void addRequestActive(Request waitingRequest,double currentTime);
         static void showRequests(std::ostream& os, const std::queue<Request>& queue);
     public: 
-        Server(int id, float processingSpeed, int waitingQueueLimit, int capacity);
+        Server(int id, double processingSpeed, int waitingQueueLimit, int capacity);
         Server(const Server& other);
         ~Server() = default;
         int getId() const { return id; }
         int getCapacity() const { return capacity; }
-        float getProcessingSpeed() const { return processingSpeed; }
+        double getProcessingSpeed() const { return processingSpeed; }
         int getWaitingQueueLimit() const { return waitingQueueLimit; }
         int getWaitingQueueSize() const { return waitingRequests.size(); }
         int getActiveQueueSize() const { return activeRequests.size(); }
         int getCompletedQueueSize() const { return completedRequests.size(); }
 
-        bool submitRequest(Request waitingRequest,float currentTime);
+        bool submitRequest(Request waitingRequest,double currentTime);
         bool canAcceptRequest() const;
-        void waitingQueueToActive(float currentTime);
-        void completeActiveRequest(float currentTime);
-        float nextCompletionTime() const;
+        void waitingQueueToActive(double currentTime);
+        void completeActiveRequest(double currentTime);
+        double nextCompletionTime() const;
         
         Server& operator=(const Server& other);
         friend std::ostream& operator<<(std::ostream& os, const Server& server);
 
-        void collectCompletedRequests(std::vector<Request>& completedQueue);
-        void collectRejectedRequests(std::vector<Request>& rejectedQueue);
+        // Replace the destination with a cumulative snapshot; history is retained.
+        void collectCompletedRequests(std::vector<Request>& completedQueue) const;
+        void collectRejectedRequests(std::vector<Request>& rejectedQueue) const;
         void collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& queuePeak) const;
     private:
         int id;
-        float processingSpeed; //workunits per second
+        double processingSpeed; //workunits per second
         int waitingQueueLimit; //maximum number of requests that can be in wait simultaneously
         //current number of requests being queued - waitingRequests.size()
         int capacity; //maximum number of requests that can be processed simultaneously

@@ -37,14 +37,34 @@ void testSimulationReport()
     }
     const ServerStats idleStatistics(1, 0, 0, 0, 0);
     assert(idleStatistics.getTotalRequestsCount() == 0);
+    assert(idleStatistics.getCompletionRate() == 0.0);
+    assert(idleStatistics.getRejectionRate() == 0.0);
+    assert(idleStatistics.getUnprocessedRate() == 0.0);
     const ServerStats unfinishedStatistics(1, 2, 1, 5, 3);
+    assert(std::abs(unfinishedStatistics.getCompletionRate() - 0.4) < 1e-12);
+    assert(std::abs(unfinishedStatistics.getRejectionRate() - 0.2) < 1e-12);
+    assert(std::abs(unfinishedStatistics.getUnprocessedRate() - 0.4) < 1e-12);
+    assert(std::abs(unfinishedStatistics.getCompletionRate() +
+        unfinishedStatistics.getRejectionRate() + unfinishedStatistics.getUnprocessedRate() - 1.0) < 1e-12);
+    const ServerStats allRejected(2, 0, 3, 3, 0);
+    assert(allRejected.getRejectionRate() == 1.0);
+    assert(allRejected.getCompletionRate() == 0.0);
+    assert(allRejected.getUnprocessedRate() == 0.0);
+    const ServerStats allUnfinished(3, 0, 0, 3, 2);
+    assert(allUnfinished.getUnprocessedRate() == 1.0);
+    const ServerStats allCompleted(4, 3, 0, 3, 1);
+    assert(allCompleted.getCompletionRate() == 1.0);
+    std::ostringstream percentages;
+    percentages << unfinishedStatistics;
+    assert(percentages.str().find("Completed=40%, Rejected=20%, Unfinished=40%")
+           != std::string::npos);
     assert(unfinishedStatistics.getTotalRequestsCount() -
            unfinishedStatistics.getCompletedRequestsCount() -
            unfinishedStatistics.getRejectedRequestsCount() == 2);
     const ServerStats boundaryStatistics(1, std::numeric_limits<int>::max(),
         0, std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
     assert(boundaryStatistics.getCompletedRequestsCount() == std::numeric_limits<int>::max());
-    const SimulationReport statisticsReport({}, {}, {unfinishedStatistics});
+    const SimulationReport statisticsReport({}, {}, {idleStatistics});
     std::ostringstream statisticsExplanation;
     statisticsExplanation << statisticsReport;
     assert(statisticsExplanation.str().find("global rejections attributed to the round-robin starting server")
@@ -314,4 +334,109 @@ void testSimulationReport()
     assert(fractionalReport.getRejectedRequests()[0].getWorkUnit() == 0.5f);
     assert(fractionalReport.averageWaitingTime() == 0.25f);
     assert(fractionalReport.averageResponseTime() == 1.0f);
+
+    const auto renderStatistics = [](const ServerStats& stats) {
+        std::ostringstream output;
+        output << stats;
+        return output.str();
+    };
+    const std::string unavailableTimes =
+        "Average waiting=N/A, Max waiting=N/A, Average response=N/A, Max response=N/A";
+    ServerStats timingStatistics(200, 2, 0, 2, 1);
+    assert(renderStatistics(timingStatistics).find(unavailableTimes) != std::string::npos);
+
+    Request shortTimed(200, 0.0f, 1.0f);
+    shortTimed.start(0.25f);
+    shortTimed.complete(1.0f);
+    Request longTimed(201, 0.0f, 1.0f);
+    longTimed.start(0.75f);
+    longTimed.complete(2.0f);
+    const std::vector<Request> timingRequests{shortTimed, longTimed};
+    timingStatistics.calculateTimeStatistics(timingRequests);
+    const std::string timingText = renderStatistics(timingStatistics);
+    assert(timingText.find(
+        "Average waiting=0.5 s, Max waiting=0.75 s, Average response=1.5 s, Max response=2 s")
+        != std::string::npos);
+    assert(timingRequests[0].waitingTime() == 0.25f);
+    assert(timingRequests[1].responseTime() == 2.0f);
+    timingStatistics.calculateTimeStatistics(timingRequests);
+    assert(renderStatistics(timingStatistics) == timingText);
+
+    Request quickTimed(202, 0.0f, 0.25f);
+    quickTimed.start(0.0f);
+    quickTimed.complete(0.25f);
+    const std::vector<Request> quickRequests{quickTimed, quickTimed};
+    timingStatistics.calculateTimeStatistics(quickRequests);
+    assert(renderStatistics(timingStatistics).find(
+        "Average waiting=0 s, Max waiting=0 s, Average response=0.25 s, Max response=0.25 s")
+        != std::string::npos);
+    bool emptySampleRejected = false;
+    try {
+        timingStatistics.calculateTimeStatistics({});
+    } catch (const std::invalid_argument&) {
+        emptySampleRejected = true;
+    }
+    assert(emptySampleRejected);
+    assert(renderStatistics(timingStatistics).find(unavailableTimes) == std::string::npos);
+    ServerStats emptyTiming(203, 0, 0, 0, 0);
+    emptyTiming.calculateTimeStatistics({});
+    assert(renderStatistics(emptyTiming).find(unavailableTimes) != std::string::npos);
+    timingStatistics.calculateTimeStatistics(timingRequests);
+    assert(renderStatistics(timingStatistics) == timingText);
+
+    for (const Request& invalidRequest : {pending, started, rejected}) {
+        bool invalidTimingCaught = false;
+        try {
+            timingStatistics.calculateTimeStatistics({shortTimed, invalidRequest});
+        } catch (const std::invalid_argument&) {
+            invalidTimingCaught = true;
+        }
+        assert(invalidTimingCaught);
+        assert(renderStatistics(timingStatistics) == timingText);
+    }
+    ServerStats singleTiming(201, 1, 0, 1, 0);
+    singleTiming.calculateTimeStatistics({shortTimed});
+    assert(renderStatistics(singleTiming).find(
+        "Average waiting=0.25 s, Max waiting=0.25 s, Average response=1 s, Max response=1 s")
+        != std::string::npos);
+    bool sampleCountRejected = false;
+    try {
+        ServerStats noCompletions(300, 0, 0, 0, 0);
+        noCompletions.calculateTimeStatistics({shortTimed});
+    } catch (const std::invalid_argument&) {
+        sampleCountRejected = true;
+    }
+    assert(sampleCountRejected);
+    for (const auto& reportStats : std::vector<std::vector<ServerStats>>{
+        {ServerStats(301, 1, 0, 1, 0)},
+        {ServerStats(301, 0, 0, 0, 0), ServerStats(301, 0, 0, 0, 0)}
+    }) {
+        bool inconsistentReportRejected = false;
+        try {
+            const SimulationReport inconsistent({}, {}, reportStats);
+        } catch (const std::invalid_argument&) {
+            inconsistentReportRejected = true;
+        }
+        assert(inconsistentReportRejected);
+    }
+    bool uncoveredResultsRejected = false;
+    try {
+        const SimulationReport uncovered({shortTimed}, {}, {ServerStats(302, 0, 0, 0, 0)});
+    } catch (const std::invalid_argument&) {
+        uncoveredResultsRejected = true;
+    }
+    assert(uncoveredResultsRejected);
+    const SimulationReport consistent({shortTimed}, {}, {ServerStats(302, 1, 0, 1, 0)});
+    assert(consistent.getCompletedRequestsCount() == 1);
+
+    Request hugeFirst(303, 0.0, 1e308);
+    hugeFirst.start(0.0);
+    hugeFirst.complete(1e308);
+    Request hugeSecond(304, 0.0, 1e308);
+    hugeSecond.start(0.0);
+    hugeSecond.complete(1e308);
+    const SimulationReport hugeReport({hugeFirst, hugeSecond}, {});
+    assert(std::isfinite(hugeReport.averageResponseTime()));
+    assert(hugeReport.averageResponseTime() == 1e308);
+
 }

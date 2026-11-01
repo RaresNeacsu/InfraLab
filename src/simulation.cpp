@@ -5,54 +5,49 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
+#include <unordered_set>
 
-Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, float maximumTime)
+Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, double maximumTime)
     : servers(servers), incomingRequests(incomingRequests), maximumTime(maximumTime)
 {
     if (servers.empty())
     {
         throw std::invalid_argument("Servers vector cannot be empty");
     }
-    if (!(incomingRequests.size() == 0 || incomingRequests.size() == 1))
-    {
-        for (std::size_t i = 1; i < incomingRequests.size(); i++)
-        {
-            if (incomingRequests[i].getArrivalTime() < incomingRequests[i - 1].getArrivalTime())
-            {
-                throw std::invalid_argument("Incoming requests must be ordered by traffic arrival time.");
-            }
-            if(incomingRequests[i].getState() != Request::State::PENDING)
-            {
-                throw std::invalid_argument("All incoming requests must be in PENDING state.");
-            }
-        }
-        if (incomingRequests[0].getState() != Request::State::PENDING)
-        {
-            throw std::invalid_argument("All incoming requests must be in PENDING state.");
+    std::unordered_set<int> serverIds;
+    for (const auto& server : servers) {
+        if (!serverIds.insert(server.getId()).second) {
+            throw std::invalid_argument("Server IDs must be unique.");
         }
     }
-
-    if(incomingRequests.size()==1 && incomingRequests[0].getState() != Request::State::PENDING)
-    {
-        throw std::invalid_argument("All incoming requests must be in PENDING state.");
+    std::unordered_set<int> requestIds;
+    for (std::size_t i = 0; i < incomingRequests.size(); ++i) {
+        const auto& request = incomingRequests[i];
+        if (request.getState() != Request::State::PENDING ||
+            !requestIds.insert(request.getId()).second) {
+            throw std::invalid_argument("Incoming requests must be pending and have unique IDs.");
+        }
+        if (i > 0 && request.getArrivalTime() < incomingRequests[i - 1].getArrivalTime()) {
+            throw std::invalid_argument("Incoming requests must be ordered by arrival time.");
+        }
     }
     if (maximumTime <= 0.0f || std::isnan(maximumTime) || std::isinf(maximumTime))
     {
-        throw std::invalid_argument("Maximum time must be a valid positive float");
+        throw std::invalid_argument("Maximum time must be a valid positive double");
     }
     
 }
 
-float Simulation::nextEventTime() const
+double Simulation::nextEventTime() const
 {
-    float earliestEventTime = std::numeric_limits<float>::infinity();
+    double earliestEventTime = std::numeric_limits<double>::infinity();
     if (nextArrivalIndex < incomingRequests.size())
     {
         earliestEventTime = incomingRequests[nextArrivalIndex].getArrivalTime();
     }
     for (const auto &server : servers)
     {
-        float serverNextCompletionTime = server.nextCompletionTime();
+        double serverNextCompletionTime = server.nextCompletionTime();
         if (serverNextCompletionTime < earliestEventTime)
         {
             earliestEventTime = serverNextCompletionTime;
@@ -63,8 +58,8 @@ float Simulation::nextEventTime() const
 
 Simulation::StepResult Simulation::step()
 {
-    float nextTime = nextEventTime();
-    if (nextTime == std::numeric_limits<float>::infinity())
+    double nextTime = nextEventTime();
+    if (nextTime == std::numeric_limits<double>::infinity())
     {
         return StepResult::Completed;
     }
@@ -110,16 +105,19 @@ SimulationReport Simulation::collectReport() const
     std::vector<ServerStats> serverReports;  
     for (const auto& server : servers)
     {
-        // Existing collection methods drain queues; drain a local snapshot only.
-        Server snapshot(server);
-        snapshot.collectCompletedRequests(completedRequests);
-        snapshot.collectRejectedRequests(rejectedRequests);
+        std::vector<Request> completedLocalRequests;
+        std::vector<Request> rejectedLocalRequests;
+        server.collectCompletedRequests(completedLocalRequests);
+        server.collectRejectedRequests(rejectedLocalRequests);
+        rejectedRequests.insert(rejectedRequests.end(), rejectedLocalRequests.begin(), rejectedLocalRequests.end());
+        completedRequests.insert(completedRequests.end(), completedLocalRequests.begin(), completedLocalRequests.end());
         int completedCount = 0;
         int rejectedCount = 0;
         int totalCount = 0;
         int maxQueueSize = 0;
         server.collectServerStatistics(completedCount, rejectedCount, totalCount, maxQueueSize);
         serverReports.emplace_back(server.getId(), completedCount, rejectedCount, totalCount, maxQueueSize);
+        serverReports.back().calculateTimeStatistics(completedLocalRequests);
     }
     return SimulationReport(completedRequests, rejectedRequests, serverReports);
 }

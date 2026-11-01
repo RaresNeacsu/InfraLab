@@ -5,9 +5,23 @@
 #include <ostream>
 #include <vector>
 #include <limits>
+#include <algorithm>
+
+namespace {
+double scheduledFinishTime(const Request& request, double processingSpeed)
+{
+    const double duration = request.getWorkUnit() / processingSpeed;
+    const double finish = request.getStartTime() + duration;
+    if (!std::isfinite(duration) || duration <= 0.0 ||
+        !std::isfinite(finish) || finish <= request.getStartTime()) {
+        throw std::overflow_error("Request processing time cannot be represented accurately.");
+    }
+    return finish;
+}
+}
 
 
-Server::Server(int id, float processingSpeed, int waitingQueueLimit, int capacity) : 
+Server::Server(int id, double processingSpeed, int waitingQueueLimit, int capacity) :
     id(id), processingSpeed(processingSpeed),waitingQueueLimit(waitingQueueLimit),capacity(capacity)
 {
     if (id <= 0)
@@ -28,7 +42,7 @@ Server::Server(int id, float processingSpeed, int waitingQueueLimit, int capacit
     }
 }
 
-Server::Server(const Server& other) : 
+Server::Server(const Server& other) :
     id(other.id), processingSpeed(other.processingSpeed), waitingQueueLimit(other.waitingQueueLimit), capacity(other.capacity),
     completedRequestsCount(other.completedRequestsCount), rejectedRequestsCount(other.rejectedRequestsCount),
     totalRequestsCount(other.totalRequestsCount), maxWaitingQueueSize(other.maxWaitingQueueSize),
@@ -36,18 +50,18 @@ Server::Server(const Server& other) :
     rejectedRequests(other.rejectedRequests)
 {
 }
-    
+
 bool Server::canAcceptRequest() const
 {
     return activeRequests.size() + waitingRequests.size()
         < static_cast<std::size_t>(capacity) + static_cast<std::size_t>(waitingQueueLimit);
 }
 
-bool Server::submitRequest(Request waitingRequest,float currentTime)
+bool Server::submitRequest(Request waitingRequest,double currentTime)
 {
     if(currentTime < 0.0f || std::isnan(currentTime) || std::isinf(currentTime))
     {
-        throw std::invalid_argument("Current time must be a valid non-negative float.");
+        throw std::invalid_argument("Current time must be a valid non-negative double.");
     }
     if(waitingRequest.getArrivalTime() > currentTime)
     {
@@ -57,18 +71,19 @@ bool Server::submitRequest(Request waitingRequest,float currentTime)
     {
         throw std::runtime_error("Only pending requests can be added to the queue.");
     }
-    this->totalRequestsCount++;
     waitingQueueToActive(currentTime);
-    
+
 
     if(static_cast<int>(activeRequests.size())<getCapacity())
     {
-        addRequestActive(waitingRequest, currentTime); 
+        addRequestActive(waitingRequest, currentTime);
+        ++totalRequestsCount;
         return true;
     }
     else if (static_cast<int>(waitingRequests.size()) < waitingQueueLimit)
     {
         waitingRequests.push(waitingRequest);
+        ++totalRequestsCount;
         this->maxWaitingQueueSize = std::max(this->maxWaitingQueueSize, static_cast<int>(waitingRequests.size()));
         return true;
     }
@@ -77,6 +92,7 @@ bool Server::submitRequest(Request waitingRequest,float currentTime)
         waitingRequest.reject();
         this->rejectedRequestsCount++;
         rejectedRequests.push(waitingRequest);
+        ++totalRequestsCount;
         return false;
     }
 }
@@ -93,11 +109,12 @@ void Server::removeWaitingRequestQueue()
     }
 }
 
-void Server::addRequestActive(Request activeRequest, float currentTime)
+void Server::addRequestActive(Request activeRequest, double currentTime)
 {
     if (static_cast<int>(activeRequests.size()) < capacity && activeRequest.getState() == Request::State::PENDING)
     {
         activeRequest.start(currentTime);
+        scheduledFinishTime(activeRequest, processingSpeed);
         activeRequests.push(activeRequest);
     }
     else
@@ -118,7 +135,7 @@ void Server::removeRequestActive()
     }
 }
 
-void Server::waitingQueueToActive(float currentTime)
+void Server::waitingQueueToActive(double currentTime)
 {
     while(!waitingRequests.empty() && static_cast<int>(activeRequests.size()) < capacity)
     {
@@ -128,22 +145,22 @@ void Server::waitingQueueToActive(float currentTime)
     }
 }
 
-void Server::completeActiveRequest(float currentTime)
+void Server::completeActiveRequest(double currentTime)
 {
     if(currentTime < 0.0f || std::isnan(currentTime) || std::isinf(currentTime))
     {
-        throw std::invalid_argument("Current time must be a valid non-negative float.");
+        throw std::invalid_argument("Current time must be a valid non-negative double.");
     }
     if (!activeRequests.empty())
     {
-        std::queue<Request> tempQueue; 
+        std::queue<Request> tempQueue;
         while(!activeRequests.empty())
         {
             Request& activeRequest = activeRequests.front();
-            float scheduledFinishTime = activeRequest.getStartTime() + (activeRequest.getWorkUnit() / processingSpeed);
-            if(currentTime >= scheduledFinishTime)
+            const double finishTime = scheduledFinishTime(activeRequest, processingSpeed);
+            if(currentTime >= finishTime)
             {
-                activeRequest.complete(scheduledFinishTime);
+                activeRequest.complete(finishTime);
                 this->completedRequestsCount++;
                 completedRequests.push(activeRequest);
                 removeRequestActive();
@@ -158,21 +175,21 @@ void Server::completeActiveRequest(float currentTime)
     }
 }
 
-float Server::nextCompletionTime() const
+double Server::nextCompletionTime() const
 {
     if(activeRequests.empty())
     {
-        return std::numeric_limits<float>::infinity();
+        return std::numeric_limits<double>::infinity();
     }
-    float nextCompletion = std::numeric_limits<float>::infinity();
-    std::queue<Request> tempQueue = activeRequests; 
+    double nextCompletion = std::numeric_limits<double>::infinity();
+    std::queue<Request> tempQueue = activeRequests;
     while(!tempQueue.empty())
     {
         const Request& activeRequest = tempQueue.front();
-        float scheduledFinishTime = activeRequest.getStartTime() + (activeRequest.getWorkUnit() / processingSpeed);
-        if(scheduledFinishTime < nextCompletion)
+        const double finishTime = scheduledFinishTime(activeRequest, processingSpeed);
+        if(finishTime < nextCompletion)
         {
-            nextCompletion = scheduledFinishTime;
+            nextCompletion = finishTime;
         }
         tempQueue.pop();
     }
@@ -181,7 +198,7 @@ float Server::nextCompletionTime() const
 
 void Server::showRequests(std::ostream& os, const std::queue<Request>& queue)
 {
-    std::queue<Request> tempQueue = queue; 
+    std::queue<Request> tempQueue = queue;
     while (!tempQueue.empty())
     {
         os << "    " << tempQueue.front() << "\n";
@@ -193,22 +210,28 @@ void Server::showRequests(std::ostream& os, const std::queue<Request>& queue)
     }
 }
 
-void Server::collectCompletedRequests(std::vector<Request>& completedQueue)
+void Server::collectCompletedRequests(std::vector<Request>& completedQueue) const
 {
-    while (!completedRequests.empty())
-    {
-        completedQueue.push_back(completedRequests.front());
-        completedRequests.pop();
+    auto history = completedRequests;
+    std::vector<Request> snapshot;
+    snapshot.reserve(history.size());
+    while (!history.empty()) {
+        snapshot.push_back(history.front());
+        history.pop();
     }
+    completedQueue = std::move(snapshot);
 }
 
-void Server::collectRejectedRequests(std::vector<Request>& rejectedQueue)
+void Server::collectRejectedRequests(std::vector<Request>& rejectedQueue) const
 {
-    while (!rejectedRequests.empty())
-    {
-        rejectedQueue.push_back(rejectedRequests.front());
-        rejectedRequests.pop();
+    auto history = rejectedRequests;
+    std::vector<Request> snapshot;
+    snapshot.reserve(history.size());
+    while (!history.empty()) {
+        snapshot.push_back(history.front());
+        history.pop();
     }
+    rejectedQueue = std::move(snapshot);
 }
 
 void Server::collectServerStatistics(int& completedCount, int& rejectedCount, int& totalCount, int& queuePeak) const

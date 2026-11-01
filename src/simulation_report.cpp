@@ -1,51 +1,72 @@
 #include "SimulationReport.h"
 #include <stdexcept>
+#include <unordered_set>
 
 SimulationReport::SimulationReport(const std::vector<Request> &completedRequests, const std::vector<Request> &rejectedRequests, const std::vector<ServerStats> &serverReports)
     : completedRequests(completedRequests), rejectedRequests(rejectedRequests), serverReports(serverReports)
 {
+    std::unordered_set<int> requestIds;
     for (const auto &request : completedRequests)
     {
-        if (request.getState() != Request::State::COMPLETED)
+        if (request.getState() != Request::State::COMPLETED || !requestIds.insert(request.getId()).second)
         {
             throw std::invalid_argument("All requests in completedRequests must be in COMPLETED state.");
         }
     }
     for (const auto &request : rejectedRequests)
     {
-        if (request.getState() != Request::State::REJECTED)
+        if (request.getState() != Request::State::REJECTED || !requestIds.insert(request.getId()).second)
         {
             throw std::invalid_argument("All requests in rejectedRequests must be in REJECTED state.");
         }
     }
+    if (!serverReports.empty()) {
+        std::unordered_set<int> serverIds;
+        std::size_t remainingCompleted = completedRequests.size();
+        std::size_t remainingRejected = rejectedRequests.size();
+        for (const auto& stats : serverReports) {
+            const auto completed = static_cast<std::size_t>(stats.getCompletedRequestsCount());
+            const auto rejected = static_cast<std::size_t>(stats.getRejectedRequestsCount());
+            if (!serverIds.insert(stats.getId()).second ||
+                completed > remainingCompleted || rejected > remainingRejected) {
+                throw std::invalid_argument("Server statistics do not match report results.");
+            }
+            remainingCompleted -= completed;
+            remainingRejected -= rejected;
+        }
+        if (remainingCompleted != 0 || remainingRejected != 0) {
+            throw std::invalid_argument("Server statistics do not cover every report result.");
+        }
+    }
+
 };
 
-float SimulationReport::averageWaitingTime() const
+double SimulationReport::averageWaitingTime() const
 {
     if (completedRequests.empty())
     {
         throw std::runtime_error("No completed requests to calculate average waiting time.");
     }
-    float totalWaitingTime = 0.0f;
+    double totalWaitingTime = 0.0f;
     for (const auto &request : completedRequests)
     {
-        totalWaitingTime += request.waitingTime();
+        totalWaitingTime += request.waitingTime() / completedRequests.size();
     }
-    return totalWaitingTime / completedRequests.size();
+    return totalWaitingTime;
 }
 
-float SimulationReport::averageResponseTime() const
+double SimulationReport::averageResponseTime() const
 {
     if (completedRequests.empty())
     {
         throw std::runtime_error("No completed requests to calculate average response time.");
     }
-    float totalResponseTime = 0.0f;
+    double totalResponseTime = 0.0f;
     for (const auto &request : completedRequests)
     {
-        totalResponseTime += request.responseTime();
+        totalResponseTime += request.responseTime() / completedRequests.size();
     }
-    return totalResponseTime / completedRequests.size();
+    return totalResponseTime;
 }
 
 std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
