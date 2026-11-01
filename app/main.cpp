@@ -1,9 +1,19 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include "Simulation.h"
 #include "file_loading.h"
 
+int compareConfigurations(const std::string& firstPath, const std::string& secondPath, const std::string& requestsPath);
+
 int main(int argc, char** argv) {
+    if (argc > 1 && std::string(argv[1]) == "--compare") {
+        if (argc != 4 && argc != 5) {
+            std::cerr << "Usage: oop_main --compare serversA.json serversB.json [requests.json]\n";
+            return 1;
+        }
+        return compareConfigurations(argv[2], argv[3], argc == 5 ? argv[4] : "assets/requests_normal.json");
+    }
     try {
         std::ifstream serversFile = fileLoading::loadFromFile("assets/servers.json");
         std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/requests_normal.json");

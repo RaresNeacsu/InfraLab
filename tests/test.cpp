@@ -10,6 +10,7 @@ void testServer();
 void testSimulationReport();
 void testSimulation();
 void testFileLoading();
+void testComparisonReport();
 
 
 int main()
@@ -19,5 +20,6 @@ int main()
     testServer();
     testSimulationReport();
     testSimulation();
+    testComparisonReport();
     return 0;
 }

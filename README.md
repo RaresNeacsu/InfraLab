@@ -5,26 +5,58 @@ It models how incoming requests are distributed across servers, queued, and proc
 Infrastructure and traffic scenarios are defined in configuration files. 
 Simulation reports provide waiting times, response times, and completed request counts, helping users identify bottlenecks and compare server configurations.
 
-## Rulare și scenarii
+## Building
 
-După compilare, din rădăcina proiectului:
+You need CMake 3.28 or newer and a compiler with C++23 support.
+From the project root, configure, build, and run the tests:
 
 ```sh
-./build/oop_main                                  # normal: 12 cereri
-./build/oop_main assets/requests_burst.json       # burst: 19 cereri
-./build/oop_main assets/requests_overload.json    # overload: 32 de cereri
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build --config Debug --parallel 6
+ctest --test-dir build -C Debug --output-on-failure
 ```
 
-Serverele sunt citite din `assets/servers.json`. Introduceți limita de timp, de exemplu `10` secunde.
-Stările simulării apar în terminal, iar raportul se salvează în `assets/simulation_report.txt`.
-Căile sunt relative la directorul din care rulați programul.
+After changing the code, repeat the build and test commands.
+The run commands below use the executable path for Linux with a single-config generator.
 
-Raportul păstrează toate rezultatele de până atunci. Colectarea nu golește istoricul;
-vectorul primit este înlocuit cu rezultatele curente. Timpii sunt calculați doar pentru
-cererile finalizate; fără finalizări apare `N/A`. Procentele folosesc totalul atribuit serverului.
+## Running scenarios
 
-Rutarea sare peste serverele pline. Cererea este respinsă numai dacă toate sunt pline,
-iar respingerea este trecută la serverul de la care a început căutarea.
+After building, run from the project root:
+
+```sh
+./build/oop_main                                  # normal: 12 requests
+./build/oop_main assets/requests_burst.json       # burst: 19 requests
+./build/oop_main assets/requests_overload.json    # overload: 32 requests
+```
+
+Servers are loaded from `assets/servers.json`. Enter a time limit, for example `10` seconds.
+Simulation states appear in the terminal, and the report is saved to `assets/simulation_report.txt`.
+Paths are relative to the directory where you run the program.
+
+The report includes all results so far. Collecting results keeps the history and replaces
+the supplied vector with the current results. Timing statistics cover completed requests only;
+without completions, they show `N/A`. Percentages use the total assigned to each server.
+
+Routing skips full servers. A request is rejected only when all servers are full,
+and the rejection is counted against the server where the search started.
+
+## Comparing configurations
+
+Compare the original configuration with one that has an extra server, using the same
+traffic and time limit:
+
+```sh
+./build/oop_main --compare assets/servers.json assets/servers_expanded.json assets/requests_overload.json
+```
+
+Enter the time limit once. Both simulations show their states in the terminal.
+The comparison and full reports are saved to `assets/comparison_report.txt`.
+Without the last argument, the normal traffic dataset is used.
+
+A configuration is considered better when it completes at least as many requests and rejects
+no more, with at least one improvement. Otherwise, the result is a tie or a trade-off.
+Average times are shown separately and cover completed requests only.
+Server costs are not included.
 
 ### Folosiți template-ul corespunzător grupei voastre!
 

@@ -66,6 +66,7 @@ add_library(${MAIN_LIBRARY_NAME} STATIC)
 # NOTE: update EXECUTABLE_NAME in .github/workflows/cmake.yml when changing name here
 add_executable(${MAIN_EXECUTABLE_NAME}
     app/main.cpp
+    app/compare.cpp
 )
 target_sources(${MAIN_LIBRARY_NAME}
     PRIVATE
@@ -75,6 +76,7 @@ target_sources(${MAIN_LIBRARY_NAME}
         src/simulation_report.cpp
         src/file_loading.cpp
         src/ServerStats.cpp
+        src/comparison_report.cpp
 )
 
 # NOTE: Add all defined targets (e.g. executables, libraries, etc. )
