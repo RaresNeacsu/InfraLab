@@ -74,6 +74,14 @@ void ServerStats::calculateTimeStatistics(const std::vector<Request>& completedR
     averageResponseTime = sumResponseTime;
 }
 
+double ServerStats::getAverageWaitingTime() const
+{
+    if (!timeStatisticsAvailable) {
+        throw std::logic_error("Time statistics are not available.");
+    }
+    return averageWaitingTime;
+}
+
 std::ostream& operator<<(std::ostream& os, const ServerStats& stats)
 {
     os << "Server " << stats.getId() ;

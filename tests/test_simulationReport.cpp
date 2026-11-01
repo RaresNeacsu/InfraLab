@@ -439,4 +439,48 @@ void testSimulationReport()
     assert(std::isfinite(hugeReport.averageResponseTime()));
     assert(hugeReport.averageResponseTime() == 1e308);
 
+    assert(!idleStatistics.hasTimeStatistics());
+    bool unavailableAverageCaught = false;
+    try {
+        idleStatistics.getAverageWaitingTime();
+    } catch (const std::logic_error&) {
+        unavailableAverageCaught = true;
+    }
+    assert(unavailableAverageCaught);
+    assert(singleTiming.hasTimeStatistics());
+    assert(singleTiming.getAverageWaitingTime() == 0.25);
+
+    const auto renderReport = [](const SimulationReport& report) {
+        std::ostringstream stream;
+        stream << report;
+        return stream.str();
+    };
+    const std::string analysisLabel = "Highest average waiting time (completed requests only): ";
+    assert(renderReport(statisticsReport).find(analysisLabel + "N/A") != std::string::npos);
+    assert(renderReport(consistent).find(analysisLabel + "N/A") != std::string::npos);
+
+    ServerStats lowWait(20, 1, 0, 1, 0);
+    lowWait.calculateTimeStatistics({shortTimed});
+    ServerStats highWait(30, 1, 0, 1, 0);
+    highWait.calculateTimeStatistics({longTimed});
+    const SimulationReport differentWaits({shortTimed, longTimed}, {},
+        {highWait, idleStatistics, lowWait});
+    assert(renderReport(differentWaits).find(analysisLabel + "Server 30, 0.75 s")
+           != std::string::npos);
+
+    ServerStats tiedWait(10, 1, 0, 1, 0);
+    tiedWait.calculateTimeStatistics({shortTimed});
+    for (const auto& order : std::vector<std::vector<ServerStats>>{
+        {lowWait, tiedWait}, {tiedWait, lowWait}
+    }) {
+        const SimulationReport tied({shortTimed, fractionalCompleted}, {}, order);
+        assert(renderReport(tied).find(analysisLabel + "Server 10, 0.25 s")
+               != std::string::npos);
+    }
+
+    ServerStats zeroWait(40, 1, 0, 1, 0);
+    zeroWait.calculateTimeStatistics({quickTimed});
+    const SimulationReport zeroWaitReport({quickTimed}, {}, {idleStatistics, zeroWait});
+    assert(renderReport(zeroWaitReport).find(analysisLabel + "Server 40, 0 s")
+           != std::string::npos);
 }

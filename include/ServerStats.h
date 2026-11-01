@@ -18,6 +18,9 @@ class ServerStats
         double getCompletionRate() const;
         double getUnprocessedRate() const;
         void calculateTimeStatistics(const std::vector<Request>& completedRequests);
+
+        bool hasTimeStatistics() const { return timeStatisticsAvailable; }
+        double getAverageWaitingTime() const;
         friend std::ostream& operator<<(std::ostream& os, const ServerStats& stats);
     private:
         int id;

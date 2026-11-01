@@ -69,6 +69,30 @@ double SimulationReport::averageResponseTime() const
     return totalResponseTime;
 }
 
+void SimulationReport::writeWaitingTimeAnalysis(std::ostream& os) const
+{
+    const ServerStats* selected = nullptr;
+    for (const auto& stats : serverReports)
+    {
+        if (!stats.hasTimeStatistics()) continue;
+        if (selected == nullptr || stats.getAverageWaitingTime() > selected->getAverageWaitingTime() ||
+            (stats.getAverageWaitingTime() == selected->getAverageWaitingTime() && stats.getId() < selected->getId()))
+        {
+            selected = &stats;
+        }
+    }
+    os << "Highest average waiting time (completed requests only): ";
+    if (selected == nullptr)
+    {
+        os << "N/A - no server has timing statistics.\n";
+    }
+    else
+    {
+        os << "Server " << selected->getId() << ", "
+           << selected->getAverageWaitingTime() << " s\n";
+    }
+}
+
 std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
 {
     os << "SIMULATION REPORT\n=================\n\n";
@@ -102,6 +126,7 @@ std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
         }
         os << "Rejected per server: global rejections attributed to the round-robin starting server\n"
               "after every server was found full; not a measure of an individual server bottleneck.\n";
+        report.writeWaitingTimeAnalysis(os);
     }
     return os;
 }

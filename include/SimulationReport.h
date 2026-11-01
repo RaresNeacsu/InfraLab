@@ -18,6 +18,7 @@ class SimulationReport
         const std::vector<ServerStats>& getServerReports() const { return serverReports; }
         friend std::ostream& operator<<(std::ostream& os, const SimulationReport& report);
     private:
+        void writeWaitingTimeAnalysis(std::ostream& os) const;
         std::vector<Request> completedRequests;
         std::vector<Request> rejectedRequests;
         std::vector<ServerStats> serverReports;
