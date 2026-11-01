@@ -483,4 +483,23 @@ void testSimulationReport()
     const SimulationReport zeroWaitReport({quickTimed}, {}, {idleStatistics, zeroWait});
     assert(renderReport(zeroWaitReport).find(analysisLabel + "Server 40, 0 s")
            != std::string::npos);
+
+    const std::string queueLabel = "Largest observed waiting queue: ";
+    assert(renderReport(statisticsReport).find(queueLabel + "No waiting queues formed.")
+           != std::string::npos);
+    assert(renderReport(zeroWaitReport).find(queueLabel + "No waiting queues formed.")
+           != std::string::npos);
+    const ServerStats smallQueue(5, 0, 0, 3, 1);
+    const ServerStats largeQueue(20, 0, 0, 4, 3);
+    const ServerStats tiedQueue(10, 0, 0, 4, 3);
+    const SimulationReport queueReport({}, {}, {smallQueue, largeQueue, idleStatistics});
+    assert(renderReport(queueReport).find(queueLabel + "Server 20, 3 requests")
+           != std::string::npos);
+    for (const auto& order : std::vector<std::vector<ServerStats>>{
+        {largeQueue, smallQueue, tiedQueue}, {tiedQueue, smallQueue, largeQueue}
+    }) {
+        const SimulationReport tiedQueues({}, {}, order);
+        assert(renderReport(tiedQueues).find(queueLabel + "Server 10, 3 requests")
+               != std::string::npos);
+    }
 }

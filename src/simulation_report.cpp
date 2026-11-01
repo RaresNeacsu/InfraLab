@@ -93,6 +93,30 @@ void SimulationReport::writeWaitingTimeAnalysis(std::ostream& os) const
     }
 }
 
+void SimulationReport::writeQueueAnalysis(std::ostream& os) const
+{
+    const ServerStats* selected = nullptr;
+    for (const auto& stats : serverReports)
+    {
+        if (stats.getMaxWaitingQueueSize() == 0) continue;
+        if (selected == nullptr || stats.getMaxWaitingQueueSize() > selected->getMaxWaitingQueueSize() ||
+            (stats.getMaxWaitingQueueSize() == selected->getMaxWaitingQueueSize() && stats.getId() < selected->getId()))
+        {
+            selected = &stats;
+        }
+    }
+    os << "Largest observed waiting queue: ";
+    if (selected == nullptr)
+    {
+        os << "No waiting queues formed.\n";
+    }
+    else
+    {
+        os << "Server " << selected->getId() << ", "
+           << selected->getMaxWaitingQueueSize() << " requests\n";
+    }
+}
+
 std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
 {
     os << "SIMULATION REPORT\n=================\n\n";
@@ -127,6 +151,7 @@ std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
         os << "Rejected per server: global rejections attributed to the round-robin starting server\n"
               "after every server was found full; not a measure of an individual server bottleneck.\n";
         report.writeWaitingTimeAnalysis(os);
+        report.writeQueueAnalysis(os);
     }
     return os;
 }

@@ -19,6 +19,7 @@ class SimulationReport
         friend std::ostream& operator<<(std::ostream& os, const SimulationReport& report);
     private:
         void writeWaitingTimeAnalysis(std::ostream& os) const;
+        void writeQueueAnalysis(std::ostream& os) const;
         std::vector<Request> completedRequests;
         std::vector<Request> rejectedRequests;
         std::vector<ServerStats> serverReports;
