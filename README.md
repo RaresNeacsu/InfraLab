@@ -27,6 +27,8 @@ After building, run from the project root:
 ./build/oop_main                                  # normal: 12 requests
 ./build/oop_main assets/requests_burst.json       # burst: 19 requests
 ./build/oop_main assets/requests_overload.json    # overload: 32 requests
+./build/oop_main assets/requests_overload.json least-loaded
+./build/oop_main assets/requests_overload.json fastest
 ```
 
 Servers are loaded from `assets/servers.json`. Enter a time limit, for example `10` seconds.
@@ -37,8 +39,8 @@ The report includes all results so far. Collecting results keeps the history and
 the supplied vector with the current results. Timing statistics cover completed requests only;
 without completions, they show `N/A`. Percentages use the total assigned to each server.
 
-Routing skips full servers. A request is rejected only when all servers are full,
-and the rejection is counted against the server where the search started.
+Choose `round-robin`, `least-loaded`, or `fastest` after the traffic file. The default is
+round robin. Routing skips full servers; a rejection is counted globally when all are full.
 
 ## Comparing configurations
 

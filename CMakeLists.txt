@@ -77,6 +77,10 @@ target_sources(${MAIN_LIBRARY_NAME}
         src/file_loading.cpp
         src/ServerStats.cpp
         src/comparison_report.cpp
+        src/routing_strategy.cpp
+        src/round_robin_strategy.cpp
+        src/least_loaded_strategy.cpp
+        src/fastest_server_strategy.cpp
 )
 
 # NOTE: Add all defined targets (e.g. executables, libraries, etc. )

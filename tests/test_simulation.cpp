@@ -1,3 +1,7 @@
+#include "RoundRobinStrategy.h"
+#include "LeastLoadedStrategy.h"
+#include "FastestServerStrategy.h"
+#include <memory>
 #undef NDEBUG
 #include <cassert>
 #include <limits>
@@ -31,7 +35,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(noServers, noTraffic, 10.0f);
+        const Simulation simulation(noServers, noTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -42,7 +46,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(noServers, traffic, 10.0f);
+        const Simulation simulation(noServers, traffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -54,7 +58,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, 10.0f);
+        const Simulation simulation(servers, noTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -65,7 +69,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, 10.0f);
+        const Simulation simulation(servers, traffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -84,7 +88,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{started}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{started}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -95,7 +99,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{started, traffic.front()}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{started, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -106,7 +110,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{traffic.front(), started}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{traffic.front(), started}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -117,7 +121,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{completed}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{completed}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -128,7 +132,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{completed, traffic.front()}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{completed, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -139,7 +143,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{traffic.front(), completed}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{traffic.front(), completed}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -150,7 +154,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{rejected}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{rejected}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -161,7 +165,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{rejected, traffic.front()}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{rejected, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -172,7 +176,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{traffic.front(), rejected}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{traffic.front(), rejected}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -184,7 +188,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{Request(4, 2.0f, 1), Request(5, 1.0f, 1)}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{Request(4, 2.0f, 1), Request(5, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -195,7 +199,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, std::vector<Request>{Request(4, 0.0f, 1), Request(5, 2.0f, 1), Request(6, 1.0f, 1)}, 10.0f);
+        const Simulation simulation(servers, std::vector<Request>{Request(4, 0.0f, 1), Request(5, 2.0f, 1), Request(6, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -209,7 +213,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, orderedTraffic, 10.0f);
+        const Simulation simulation(servers, orderedTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -221,7 +225,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, 0.0f);
+        const Simulation simulation(servers, traffic, 0.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -232,7 +236,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, -1.0f);
+        const Simulation simulation(servers, traffic, -1.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -243,7 +247,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, std::numeric_limits<float>::quiet_NaN());
+        const Simulation simulation(servers, traffic, std::numeric_limits<float>::quiet_NaN(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -254,7 +258,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, std::numeric_limits<float>::infinity());
+        const Simulation simulation(servers, traffic, std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -265,7 +269,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, traffic, -std::numeric_limits<float>::infinity());
+        const Simulation simulation(servers, traffic, -std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -277,7 +281,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, 0.0f);
+        const Simulation simulation(servers, noTraffic, 0.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -288,7 +292,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, -1.0f);
+        const Simulation simulation(servers, noTraffic, -1.0f, std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -299,7 +303,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::quiet_NaN());
+        const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::quiet_NaN(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -310,7 +314,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::infinity());
+        const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -321,7 +325,7 @@ void testSimulation()
     caught = false;
     try
     {
-        const Simulation simulation(servers, noTraffic, -std::numeric_limits<float>::infinity());
+        const Simulation simulation(servers, noTraffic, -std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
     catch (const std::invalid_argument &)
     {
@@ -340,8 +344,8 @@ void testSimulation()
     accepted = faster.submitRequest(Request(19, 0.0f, 3), 0.0f);
     assert(accepted);
     const Server idle(4, 1.0f, 0, 1);
-    Simulation snapshots(std::vector<Server>{idle, busy, faster}, noTraffic, 20.0f);
-    Simulation reordered(std::vector<Server>{faster, busy, idle}, noTraffic, 20.0f);
+    Simulation snapshots(std::vector<Server>{idle, busy, faster}, noTraffic, 20.0f, std::make_unique<RoundRobinStrategy>());
+    Simulation reordered(std::vector<Server>{faster, busy, idle}, noTraffic, 20.0f, std::make_unique<RoundRobinStrategy>());
     faster.completeActiveRequest(0.75f);
     busy.completeActiveRequest(4.0f);
     Simulation::StepResult snapshotResult = snapshots.step();
@@ -364,12 +368,12 @@ void testSimulation()
     const SimulationReport remainingSnapshot = snapshots.collectReport();
     assert(remainingSnapshot.getCompletedRequestsCount() == 3);
     assert(firstSnapshot.getCompletedRequestsCount() == 1);
-    Simulation finishedServers(std::vector<Server>{busy, faster}, noTraffic, 20.0f);
+    Simulation finishedServers(std::vector<Server>{busy, faster}, noTraffic, 20.0f, std::make_unique<RoundRobinStrategy>());
     snapshotResult = finishedServers.step();
     assert(snapshotResult == Simulation::StepResult::Completed);
 
     // test step() - no events and repeated completion ///////////////////////////////////////////
-    Simulation idleSimulation(servers, noTraffic, 10.0f);
+    Simulation idleSimulation(servers, noTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     Simulation::StepResult result = idleSimulation.step();
     assert(result == Simulation::StepResult::Completed);
     result = idleSimulation.step();
@@ -377,7 +381,7 @@ void testSimulation()
 
     // test step() - arrival at zero and fractional completion ///////////////////////////////////////////
     Simulation singleStep(std::vector<Server>{Server(20, 2.0f, 0, 1)},
-        std::vector<Request>{Request(20, 0.0f, 3)}, 10.0f);
+        std::vector<Request>{Request(20, 0.0f, 3)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = singleStep.step();
     assertCurrentTime(singleStep, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -389,7 +393,7 @@ void testSimulation()
 
     // test step() - all equal-time arrivals processed together ///////////////////////////////////////////
     Simulation sameTime(std::vector<Server>{Server(21, 1.0f, 0, 2)},
-        std::vector<Request>{Request(21, 1.0f, 2), Request(22, 1.0f, 1)}, 10.0f);
+        std::vector<Request>{Request(21, 1.0f, 2), Request(22, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = sameTime.step();
     assertCurrentTime(sameTime, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -404,7 +408,7 @@ void testSimulation()
 
     // test step() - completion before arrival at the same time ///////////////////////////////////////////
     Simulation completionBeforeArrival(std::vector<Server>{Server(22, 1.0f, 0, 1)},
-        std::vector<Request>{Request(23, 0.0f, 1), Request(24, 1.0f, 2)}, 10.0f);
+        std::vector<Request>{Request(23, 0.0f, 1), Request(24, 1.0f, 2)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = completionBeforeArrival.step();
     assertCurrentTime(completionBeforeArrival, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -414,7 +418,7 @@ void testSimulation()
 
     // test step() - waiting requests before new arrivals ///////////////////////////////////////////
     Simulation waitingPriority(std::vector<Server>{Server(23, 1.0f, 1, 1)},
-        std::vector<Request>{Request(25, 0.0f, 1), Request(26, 0.0f, 2), Request(27, 1.0f, 4)}, 20.0f);
+        std::vector<Request>{Request(25, 0.0f, 1), Request(26, 0.0f, 2), Request(27, 1.0f, 4)}, 20.0f, std::make_unique<RoundRobinStrategy>());
     result = waitingPriority.step();
     assertCurrentTime(waitingPriority, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -432,7 +436,7 @@ void testSimulation()
 
     // test step() - round robin persists between steps and wraps ///////////////////////////////////////////
     Simulation roundRobin(std::vector<Server>{Server(24, 1.0f, 0, 2), Server(25, 2.0f, 0, 2)},
-        std::vector<Request>{Request(28, 0.0f, 4), Request(29, 0.5f, 2), Request(30, 1.0f, 1)}, 10.0f);
+        std::vector<Request>{Request(28, 0.0f, 4), Request(29, 0.5f, 2), Request(30, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = roundRobin.step();
     assertCurrentTime(roundRobin, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -456,7 +460,7 @@ void testSimulation()
 
     // test step() - refusal consumes arrival without stopping simulation ///////////////////////////////////////////
     Simulation refusal(std::vector<Server>{Server(26, 1.0f, 0, 1)},
-        std::vector<Request>{Request(31, 0.0f, 3), Request(32, 1.0f, 1)}, 10.0f);
+        std::vector<Request>{Request(31, 0.0f, 3), Request(32, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = refusal.step();
     assertCurrentTime(refusal, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -470,7 +474,7 @@ void testSimulation()
     assert(result == Simulation::StepResult::Completed);
 
     // test step() - time limit before arrival or active completion ///////////////////////////////////////////
-    Simulation lateArrival(servers, std::vector<Request>{Request(33, 5.0f, 1)}, 4.0f);
+    Simulation lateArrival(servers, std::vector<Request>{Request(33, 5.0f, 1)}, 4.0f, std::make_unique<RoundRobinStrategy>());
     result = lateArrival.step();
     assertCurrentTime(lateArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
@@ -478,7 +482,7 @@ void testSimulation()
     assertCurrentTime(lateArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     Simulation lateCompletion(std::vector<Server>{Server(27, 1.0f, 0, 1)},
-        std::vector<Request>{Request(34, 0.0f, 5)}, 4.0f);
+        std::vector<Request>{Request(34, 0.0f, 5)}, 4.0f, std::make_unique<RoundRobinStrategy>());
     result = lateCompletion.step();
     assertCurrentTime(lateCompletion, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -488,7 +492,7 @@ void testSimulation()
 
     // test step() - events exactly at maximum time are processed ///////////////////////////////////////////
     Simulation boundaryArrival(std::vector<Server>{Server(28, 1.0f, 0, 1)},
-        std::vector<Request>{Request(35, 4.0f, 1)}, 4.0f);
+        std::vector<Request>{Request(35, 4.0f, 1)}, 4.0f, std::make_unique<RoundRobinStrategy>());
     result = boundaryArrival.step();
     assertCurrentTime(boundaryArrival, 4.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -496,7 +500,7 @@ void testSimulation()
     assertCurrentTime(boundaryArrival, 4.0f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     Simulation boundaryCompletion(std::vector<Server>{Server(29, 1.0f, 0, 1)},
-        std::vector<Request>{Request(36, 0.0f, 4)}, 4.0f);
+        std::vector<Request>{Request(36, 0.0f, 4)}, 4.0f, std::make_unique<RoundRobinStrategy>());
     result = boundaryCompletion.step();
     assertCurrentTime(boundaryCompletion, 0.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -512,7 +516,7 @@ void testSimulation()
     accepted = occupiedA.submitRequest(Request(40, 0.0f, 10), 0.0f);
     assert(accepted); // A remains busy until 10; B starts idle.
     Simulation rejectionRotation(std::vector<Server>{occupiedA, freeB},
-        std::vector<Request>{Request(41, 1.0f, 1), Request(42, 3.0f, 1)}, 20.0f);
+        std::vector<Request>{Request(41, 1.0f, 1), Request(42, 3.0f, 1)}, 20.0f, std::make_unique<RoundRobinStrategy>());
     result = rejectionRotation.step(); // Arrival at 1 skips full A and starts on B.
     assertCurrentTime(rejectionRotation, 1.0f);
     assert(result == Simulation::StepResult::EventProcessed);
@@ -572,7 +576,7 @@ void testSimulation()
     const std::vector<Request> originalTraffic{
         Request(50, 0.0f, 6), Request(51, 0.0f, 6), Request(52, 0.0f, 6)
     };
-    Simulation originalScenario(originalServers, originalTraffic, 20.0f);
+    Simulation originalScenario(originalServers, originalTraffic, 20.0f, std::make_unique<RoundRobinStrategy>());
     result = originalScenario.step();
     int originalSteps = 1;
     while (result == Simulation::StepResult::EventProcessed && originalSteps < 10)
@@ -632,13 +636,13 @@ void testSimulation()
 
     // test operator<< - empty traffic and const Simulation ///////////////////////////////////////////
     const std::vector<Server> outputServers{Server(60, 2.0f, 1, 1), Server(61, 1.0f, 1, 1)};
-    const Simulation outputEmpty(outputServers, noTraffic, 12.0f);
+    const Simulation outputEmpty(outputServers, noTraffic, 12.0f, std::make_unique<RoundRobinStrategy>());
     std::ostringstream emptyState;
     std::ostream& returnedStream = (emptyState << outputEmpty);
     assert(&returnedStream == &emptyState && "Operator must return the supplied stream");
     std::ostringstream expectedEmptyState;
     expectedEmptyState << "Simulation State:\nCurrent Time: 0\nMaximum Time: 12\n"
-                       << "Next Arrival Index: 0\nNext Server Index: 0\n"
+                       << "Next Arrival Index: 0\nRouting Strategy: RoundRobinStrategy(currentIndex=0)\n"
                        << "Incoming Requests:\n\nServers:\n"
                        << outputServers[0] << "\n" << outputServers[1] << "\n";
     assert(emptyState.str() == expectedEmptyState.str());
@@ -647,13 +651,13 @@ void testSimulation()
 
     // test operator<< - initial and stepped state with multiple servers ///////////////////////////////////////////
     const std::vector<Request> outputTraffic{Request(60, 1.0f, 4), Request(61, 2.0f, 1)};
-    Simulation printableSimulation(outputServers, outputTraffic, 12.0f);
+    Simulation printableSimulation(outputServers, outputTraffic, 12.0f, std::make_unique<RoundRobinStrategy>());
     const Simulation& printableView = printableSimulation;
     std::ostringstream initialState;
     initialState << printableView;
     std::ostringstream expectedInitialState;
     expectedInitialState << "Simulation State:\nCurrent Time: 0\nMaximum Time: 12\n"
-                         << "Next Arrival Index: 0\nNext Server Index: 0\nIncoming Requests:\n"
+                         << "Next Arrival Index: 0\nRouting Strategy: RoundRobinStrategy(currentIndex=0)\nIncoming Requests:\n"
                          << "  " << outputTraffic[0] << "\n  " << outputTraffic[1] << "\n" << "\nServers:\n"
                          << outputServers[0] << "\n" << outputServers[1] << "\n";
     assert(initialState.str() == expectedInitialState.str() && "Output must preserve incoming and server order");
@@ -667,7 +671,7 @@ void testSimulation()
     steppedState << printableView;
     std::ostringstream expectedSteppedState;
     expectedSteppedState << "Simulation State:\nCurrent Time: 1\nMaximum Time: 12\n"
-                         << "Next Arrival Index: 1\nNext Server Index: 1\nIncoming Requests:\n"
+                         << "Next Arrival Index: 1\nRouting Strategy: RoundRobinStrategy(currentIndex=1)\nIncoming Requests:\n"
                          << "  " << outputTraffic[0] << "\n  " << outputTraffic[1] << "\n" << "\nServers:\n"
                          << expectedOutputServers[0] << "\n" << expectedOutputServers[1] << "\n";
     assert(steppedState.str() == expectedSteppedState.str());
@@ -685,7 +689,7 @@ void testSimulation()
     std::ostringstream completedState;
     completedState << printableView;
     assert(completedState.str().find("Current Time: 3\n") != std::string::npos);
-    assert(completedState.str().find("Next Arrival Index: 2\nNext Server Index: 0\n") != std::string::npos);
+    assert(completedState.str().find("Next Arrival Index: 2\nRouting Strategy: RoundRobinStrategy(currentIndex=0)\n") != std::string::npos);
     const SimulationReport printedReport = printableSimulation.collectReport();
     assert(printedReport.getCompletedRequestsCount() == 2 && "Printing must preserve results for collection");
     assert(printedReport.getRejectedRequestsCount() == 0);
@@ -698,18 +702,18 @@ void testSimulation()
     assert(chainedState.str() == expectedEmptyState.str() + drainedState.str());
 
     // test operator<< - time limit state ///////////////////////////////////////////
-    Simulation limitedOutput(outputServers, std::vector<Request>{Request(62, 5.0f, 1)}, 2.5f);
+    Simulation limitedOutput(outputServers, std::vector<Request>{Request(62, 5.0f, 1)}, 2.5f, std::make_unique<RoundRobinStrategy>());
     result = limitedOutput.step();
     assertCurrentTime(limitedOutput, 2.5f);
     assert(result == Simulation::StepResult::TimeLimitReached);
     std::ostringstream limitState;
     limitState << limitedOutput;
     assert(limitState.str().find("Current Time: 2.5\nMaximum Time: 2.5\n") != std::string::npos);
-    assert(limitState.str().find("Next Arrival Index: 0\nNext Server Index: 0\n") != std::string::npos);
+    assert(limitState.str().find("Next Arrival Index: 0\nRouting Strategy: RoundRobinStrategy(currentIndex=0)\n") != std::string::npos);
 
     // test fractional workUnit - full simulation and report ///////////////////////////////////////////
     Simulation fractionalSimulation(std::vector<Server>{Server(100, 2.0f, 1, 1)},
-        std::vector<Request>{Request(100, 0.0f, 1.5f), Request(101, 0.0f, 1.5f)}, 10.0f);
+        std::vector<Request>{Request(100, 0.0f, 1.5f), Request(101, 0.0f, 1.5f)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     result = fractionalSimulation.step();
     assert(result == Simulation::StepResult::EventProcessed);
     result = fractionalSimulation.step();
@@ -757,7 +761,7 @@ void testSimulation()
     assert(seeded);
     Simulation fallback(std::vector<Server>{fullA, Server(202, 1.0f, 1, 1), Server(203, 1.0f, 0, 1)},
         std::vector<Request>{Request(201, 1.0f, 2), Request(202, 1.0f, 2),
-                             Request(203, 1.0f, 2), Request(204, 1.0f, 2)}, 20.0f);
+                             Request(203, 1.0f, 2), Request(204, 1.0f, 2)}, 20.0f, std::make_unique<RoundRobinStrategy>());
     result = fallback.step();
     assert(result == Simulation::StepResult::EventProcessed);
     const auto arrivalReport = fallback.collectReport();
@@ -770,9 +774,9 @@ void testSimulation()
     assert(arrivalStats[1].getTotalRequestsCount() == 2);
     assert(arrivalStats[1].getRejectedRequestsCount() == 0);
     assert(arrivalStats[1].getMaxWaitingQueueSize() == 1);
-    // C was next after B accepted the third arrival; it records the rejection.
-    assert(arrivalStats[2].getTotalRequestsCount() == 2);
-    assert(arrivalStats[2].getRejectedRequestsCount() == 1);
+    // The rejection belongs to the simulation, not to server C.
+    assert(arrivalStats[2].getTotalRequestsCount() == 1);
+    assert(arrivalStats[2].getRejectedRequestsCount() == 0);
     int fallbackSteps = 0;
     do {
         result = fallback.step();
@@ -789,7 +793,7 @@ void testSimulation()
     assert(fallbackCompleted[3].getId() == 202);
 
     Simulation separateTimings(std::vector<Server>{Server(301, 1.0f, 0, 1), Server(302, 2.0f, 0, 1)},
-        std::vector<Request>{Request(301, 0.0f, 1.0f), Request(302, 0.0f, 0.5f)}, 10.0f);
+        std::vector<Request>{Request(301, 0.0f, 1.0f), Request(302, 0.0f, 0.5f)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     for (int step = 0; step < 4; ++step) {
         result = separateTimings.step();
     }
@@ -808,7 +812,7 @@ void testSimulation()
     unfinishedTimingOutput << lateCompletionReport;
     assert(unfinishedTimingOutput.str().find("Average waiting=N/A") != std::string::npos);
     Simulation preciseTime({Server(401, 1.0, 0, 1)},
-        {Request(401, 16777216.0, 1.0)}, 16777218.0);
+        {Request(401, 16777216.0, 1.0)}, 16777218.0, std::make_unique<RoundRobinStrategy>());
     result = preciseTime.step();
     assert(result == Simulation::StepResult::EventProcessed);
     result = preciseTime.step();
@@ -817,7 +821,7 @@ void testSimulation()
     assert(result == Simulation::StepResult::Completed);
     assert(preciseTime.collectReport().getCompletedRequests()[0].responseTime() == 1.0);
 
-    Simulation longDuration({Server(402, 1e-30, 0, 1)}, {Request(402, 0.0, 1e30)}, 10.0);
+    Simulation longDuration({Server(402, 1e-30, 0, 1)}, {Request(402, 0.0, 1e30)}, 10.0, std::make_unique<RoundRobinStrategy>());
     result = longDuration.step();
     assert(result == Simulation::StepResult::EventProcessed);
     result = longDuration.step();
@@ -828,7 +832,7 @@ void testSimulation()
         const double work = speed == 1.0 ? 1.0 : std::numeric_limits<double>::max();
         const double arrival = speed == 1.0 ? 1e20 : 0.0;
         Simulation invalidDuration({Server(403, speed, 0, 1)},
-            {Request(403, arrival, work)}, 1e21);
+            {Request(403, arrival, work)}, 1e21, std::make_unique<RoundRobinStrategy>());
         bool durationRejected = false;
         try {
             invalidDuration.step();
@@ -846,7 +850,7 @@ void testSimulation()
     historyServer.completeActiveRequest(1.0);
     std::vector<Request> previouslyCollected;
     historyServer.collectCompletedRequests(previouslyCollected);
-    Simulation preservedHistory({historyServer}, {}, 10.0);
+    Simulation preservedHistory({historyServer}, {}, 10.0, std::make_unique<RoundRobinStrategy>());
     const auto preservedReport = preservedHistory.collectReport();
     assert(previouslyCollected.size() == 1);
     assert(preservedReport.getCompletedRequestsCount() == 1);
@@ -854,10 +858,43 @@ void testSimulation()
 
     bool duplicateServerRejected = false;
     try {
-        const Simulation duplicateServers({Server(405, 1.0, 0, 1), Server(405, 2.0, 0, 1)}, {}, 10.0);
+        const Simulation duplicateServers({Server(405, 1.0, 0, 1), Server(405, 2.0, 0, 1)}, {}, 10.0, std::make_unique<RoundRobinStrategy>());
     } catch (const std::invalid_argument&) {
         duplicateServerRejected = true;
     }
     assert(duplicateServerRejected);
 
+    const std::vector<Server> policyServers{Server(10, 1.0, 1, 1), Server(20, 2.0, 1, 1)};
+    const std::vector<Request> policyTraffic{Request(501, 0.0, 4.0), Request(502, 1.0, 4.0)};
+    Simulation least(policyServers, policyTraffic, 20.0, std::make_unique<LeastLoadedStrategy>());
+    Simulation fast(policyServers, policyTraffic, 20.0, std::make_unique<FastestServerStrategy>());
+    auto policyStep = least.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    policyStep = fast.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    assert(least.collectReport().getServerReports()[0].getTotalRequestsCount() == 1);
+    assert(fast.collectReport().getServerReports()[1].getTotalRequestsCount() == 1);
+    policyStep = least.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    policyStep = fast.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    assert(least.collectReport().getServerReports()[1].getTotalRequestsCount() == 1);
+    assert(fast.collectReport().getServerReports()[1].getTotalRequestsCount() == 2);
+
+    Simulation original(policyServers, policyTraffic, 20.0, std::make_unique<RoundRobinStrategy>());
+    policyStep = original.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    Simulation copied(original);
+    Simulation assigned(policyServers, {}, 20.0, std::make_unique<FastestServerStrategy>());
+    assigned = original;
+    assigned = assigned;
+    policyStep = original.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    assert(copied.collectReport().getServerReports()[1].getTotalRequestsCount() == 0);
+    policyStep = copied.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    policyStep = assigned.step();
+    assert(policyStep == Simulation::StepResult::EventProcessed);
+    assert(copied.collectReport().getServerReports()[1].getTotalRequestsCount() == 1);
+    assert(assigned.collectReport().getServerReports()[1].getTotalRequestsCount() == 1);
 }

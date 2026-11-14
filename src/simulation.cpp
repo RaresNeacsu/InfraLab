@@ -5,14 +5,19 @@
 #include <stdexcept>
 #include <cmath>
 #include <limits>
+#include <utility>
 #include <unordered_set>
 
-Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, double maximumTime)
-    : servers(servers), incomingRequests(incomingRequests), maximumTime(maximumTime)
+Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Request> &incomingRequests, double maximumTime, std::unique_ptr<RoutingStrategy> strategy)
+    : servers(servers), incomingRequests(incomingRequests), maximumTime(maximumTime), routingStrategy(std::move(strategy))
 {
     if (servers.empty())
     {
         throw std::invalid_argument("Servers vector cannot be empty");
+    }
+    if (!this->routingStrategy)
+    {
+        throw std::invalid_argument("Routing strategy cannot be null");
     }
     std::unordered_set<int> serverIds;
     for (const auto& server : servers) {
@@ -36,6 +41,33 @@ Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Req
         throw std::invalid_argument("Maximum time must be a valid positive double");
     }
     
+}
+
+Simulation::Simulation(const Simulation& other)
+    : servers(other.servers), incomingRequests(other.incomingRequests),
+      globallyRejectedRequests(other.globallyRejectedRequests), nextArrivalIndex(other.nextArrivalIndex),
+      currentTime(other.currentTime), maximumTime(other.maximumTime),
+      routingStrategy(other.routingStrategy->clone())
+{
+}
+
+void Simulation::swap(Simulation& other) noexcept
+{
+    using std::swap;
+    swap(servers, other.servers);
+    swap(incomingRequests, other.incomingRequests);
+    swap(globallyRejectedRequests, other.globallyRejectedRequests);
+    swap(nextArrivalIndex, other.nextArrivalIndex);
+    swap(currentTime, other.currentTime);
+    swap(maximumTime, other.maximumTime);
+    swap(routingStrategy, other.routingStrategy);
+}
+
+Simulation& Simulation::operator=(const Simulation& other)
+{
+    Simulation copy(other);
+    swap(copy);
+    return *this;
 }
 
 double Simulation::nextEventTime() const
@@ -79,19 +111,17 @@ Simulation::StepResult Simulation::step()
     }
     while (nextArrivalIndex < incomingRequests.size() && incomingRequests[nextArrivalIndex].getArrivalTime() <= currentTime)
     {
-        std::size_t selectedServer = nextServerIndex;
-        for (std::size_t attempts = 0; attempts < servers.size(); ++attempts)
+        const auto selectedServer = routingStrategy->chooseServer(servers);
+        if (selectedServer)
         {
-            const std::size_t candidate = (nextServerIndex + attempts) % servers.size();
-            if (servers[candidate].canAcceptRequest())
-            {
-                selectedServer = candidate;
-                break;
-            }
+            servers[*selectedServer].submitRequest(incomingRequests[nextArrivalIndex], currentTime);
         }
-        // If every server is full, the starting server records one rejection.
-        servers[selectedServer].submitRequest(incomingRequests[nextArrivalIndex], currentTime);
-        nextServerIndex = (selectedServer + 1) % servers.size();
+        else
+        {
+            Request rejected = incomingRequests[nextArrivalIndex];
+            rejected.reject();
+            globallyRejectedRequests.push_back(rejected);
+        }
         nextArrivalIndex++;
     }
     return StepResult::EventProcessed;
@@ -101,7 +131,7 @@ Simulation::StepResult Simulation::step()
 SimulationReport Simulation::collectReport() const
 {
     std::vector<Request> completedRequests;
-    std::vector<Request> rejectedRequests;
+    std::vector<Request> rejectedRequests = globallyRejectedRequests;
     std::vector<ServerStats> serverReports;  
     for (const auto& server : servers)
     {
@@ -128,7 +158,7 @@ std::ostream& operator<<(std::ostream& os, const Simulation& simulation)
     os << "Current Time: " << simulation.currentTime << "\n";
     os << "Maximum Time: " << simulation.maximumTime << "\n";
     os << "Next Arrival Index: " << simulation.nextArrivalIndex << "\n";
-    os << "Next Server Index: " << simulation.nextServerIndex << "\n";
+    os << "Routing Strategy: " << *simulation.routingStrategy << "\n";
     os << "Incoming Requests:\n";
     for (const auto& request : simulation.incomingRequests)
     {

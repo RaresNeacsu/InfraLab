@@ -1,3 +1,5 @@
+#include "RoundRobinStrategy.h"
+#include <memory>
 #include <iostream>
 #include <string>
 #include "ComparisonReport.h"
@@ -7,7 +9,7 @@
 static SimulationReport runConfiguration(const std::vector<Server>& servers, const std::vector<Request>& requests, double timeLimit, const char* label)
 {
     std::cout << "\nRunning configuration " << label << '\n';
-    Simulation simulation(servers, requests, timeLimit);
+    Simulation simulation(servers, requests, timeLimit, std::make_unique<RoundRobinStrategy>());
     Simulation::StepResult result;
     do {
         result = simulation.step();

@@ -8,6 +8,7 @@ add_executable(${TESTS_EXECUTABLE_NAME}
     test_simulationReport.cpp
     test_simulation.cpp
     test_comparisonReport.cpp
+    test_routing_strategy.cpp
 )
 
 target_link_libraries(${TESTS_EXECUTABLE_NAME} PRIVATE ${MAIN_LIBRARY_NAME})

@@ -1,3 +1,5 @@
+#include "RoundRobinStrategy.h"
+#include <memory>
 #undef NDEBUG
 #include <cassert>
 #include <limits>
@@ -8,7 +10,7 @@
 
 static SimulationReport runScenario(const std::vector<Server>& servers, const std::vector<Request>& requests, double limit)
 {
-    Simulation simulation(servers, requests, limit);
+    Simulation simulation(servers, requests, limit, std::make_unique<RoundRobinStrategy>());
     for (int step = 0; step < 30; ++step) {
         if (simulation.step() != Simulation::StepResult::EventProcessed) {
             return simulation.collectReport();

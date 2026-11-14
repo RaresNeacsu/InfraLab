@@ -1,3 +1,7 @@
+#include "RoundRobinStrategy.h"
+#include "LeastLoadedStrategy.h"
+#include "FastestServerStrategy.h"
+#include <memory>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -15,6 +19,15 @@ int main(int argc, char** argv) {
         return compareConfigurations(argv[2], argv[3], argc == 5 ? argv[4] : "assets/requests_normal.json");
     }
     try {
+        if (argc > 3) {
+            throw std::invalid_argument("Usage: oop_main [requests.json] [round-robin|least-loaded|fastest]");
+        }
+        const std::string strategyName = argc == 3 ? argv[2] : "round-robin";
+        std::unique_ptr<RoutingStrategy> strategy;
+        if (strategyName == "round-robin") strategy = std::make_unique<RoundRobinStrategy>();
+        else if (strategyName == "least-loaded") strategy = std::make_unique<LeastLoadedStrategy>();
+        else if (strategyName == "fastest") strategy = std::make_unique<FastestServerStrategy>();
+        else throw std::invalid_argument("Unknown strategy: " + strategyName);
         std::ifstream serversFile = fileLoading::loadFromFile("assets/servers.json");
         std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/requests_normal.json");
 
@@ -40,7 +53,7 @@ int main(int argc, char** argv) {
 
 
         std::cout << "\n\nRunning simulation (time limit: " << timeLimit << " s)...\n";
-        Simulation simulation(servers, requests, timeLimit);
+        Simulation simulation(servers, requests, timeLimit, std::move(strategy));
 
         Simulation::StepResult result;
         do {

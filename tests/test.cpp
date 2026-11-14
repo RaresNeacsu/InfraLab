@@ -11,6 +11,7 @@ void testSimulationReport();
 void testSimulation();
 void testFileLoading();
 void testComparisonReport();
+void testRoutingStrategy();
 
 
 int main()
@@ -21,5 +22,6 @@ int main()
     testSimulationReport();
     testSimulation();
     testComparisonReport();
+    testRoutingStrategy();
     return 0;
 }

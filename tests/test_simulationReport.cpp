@@ -67,7 +67,7 @@ void testSimulationReport()
     const SimulationReport statisticsReport({}, {}, {idleStatistics});
     std::ostringstream statisticsExplanation;
     statisticsExplanation << statisticsReport;
-    assert(statisticsExplanation.str().find("global rejections attributed to the round-robin starting server")
+    assert(statisticsExplanation.str().find("Global rejections are not attributed to a server.")
            != std::string::npos);
 
     // test constructor and getters ///////////////////////////////////////////

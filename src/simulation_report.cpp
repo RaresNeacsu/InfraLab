@@ -34,7 +34,7 @@ SimulationReport::SimulationReport(const std::vector<Request> &completedRequests
             remainingCompleted -= completed;
             remainingRejected -= rejected;
         }
-        if (remainingCompleted != 0 || remainingRejected != 0) {
+        if (remainingCompleted != 0) {
             throw std::invalid_argument("Server statistics do not cover every report result.");
         }
     }
@@ -148,8 +148,7 @@ std::ostream &operator<<(std::ostream &os, const SimulationReport &report)
         {
             os << "  " << stats << '\n';
         }
-        os << "Rejected per server: global rejections attributed to the round-robin starting server\n"
-              "after every server was found full; not a measure of an individual server bottleneck.\n";
+        os << "Global rejections are not attributed to a server.\n";
         report.writeWaitingTimeAnalysis(os);
         report.writeQueueAnalysis(os);
     }
