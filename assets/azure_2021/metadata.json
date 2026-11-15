@@ -1,0 +1,21 @@
+{
+  "source": "Microsoft Azure Functions Invocation Trace 2021",
+  "source_url": "https://github.com/Azure/AzurePublicDataset/blob/master/AzureFunctionsInvocationTrace2021.md",
+  "archive_url": "https://raw.githubusercontent.com/Azure/AzurePublicDataset/master/data/AzureFunctionsInvocationTraceForTwoWeeksJan2021.rar",
+  "license": "CC-BY-4.0",
+  "license_url": "https://github.com/Azure/AzurePublicDataset/blob/master/LICENSE",
+  "source_file_sha256": "d56368ef194baa8d418304bd2f87cca67668ced0d117bd89ad4ef3cf836457d2",
+  "requests_sha256": "443c8b1299c5b77e9b90057aeaffd10be1691877f1836cd7376609023ce65723",
+  "source_rows": 1980951,
+  "excluded_nonpositive_or_nonfinite_duration_rows": 171333,
+  "selection": "First 10000 valid invocations sorted by (end_timestamp - duration, source CSV line number).",
+  "arrival_origin_seconds": 0.0014909000396728517,
+  "request_count": 10000,
+  "last_arrival_seconds": 10763.952284194946,
+  "mean_duration_seconds": 6.6604931,
+  "median_duration_seconds": 0.001,
+  "maximum_duration_seconds": 563.175,
+  "recommended_time_limit_seconds": 12000,
+  "speed_interpretation": "Duration replay at speed 1.0 per worker, not measured hardware CPU capacity.",
+  "configurations": "Three servers each, with 2/4/8 workers per server and waiting limit twice the worker count. Synthetic assumptions."
+}

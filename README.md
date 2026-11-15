@@ -25,13 +25,13 @@ After building, run from the project root:
 
 ```sh
 ./build/oop_main                                  # normal: 12 requests
-./build/oop_main assets/requests_burst.json       # burst: 19 requests
-./build/oop_main assets/requests_overload.json    # overload: 32 requests
-./build/oop_main assets/requests_overload.json least-loaded
-./build/oop_main assets/requests_overload.json fastest
+./build/oop_main assets/custom/requests_burst.json       # burst: 19 requests
+./build/oop_main assets/custom/requests_overload.json    # overload: 32 requests
+./build/oop_main assets/custom/requests_overload.json least-loaded
+./build/oop_main assets/custom/requests_overload.json fastest
 ```
 
-Servers are loaded from `assets/servers.json`. Enter a time limit, for example `10` seconds.
+Servers are loaded from `assets/custom/servers.json`. Enter a time limit, for example `10` seconds.
 Simulation states appear in the terminal, and the report is saved to `assets/simulation_report.txt`.
 Paths are relative to the directory where you run the program.
 
@@ -44,11 +44,14 @@ round robin. Routing skips full servers; a rejection is counted globally when al
 
 ## Comparing configurations
 
+A sample of real Azure function invocations and experimental worker configurations
+is available in [assets/azure_2021](assets/azure_2021/README.md).
+
 Compare the original configuration with one that has an extra server, using the same
 traffic and time limit:
 
 ```sh
-./build/oop_main --compare assets/servers.json assets/servers_expanded.json assets/requests_overload.json
+./build/oop_main --compare assets/custom/servers.json assets/custom/servers_expanded.json assets/custom/requests_overload.json
 ```
 
 Enter the time limit once. Both simulations show their states in the terminal.

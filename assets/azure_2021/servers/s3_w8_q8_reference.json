@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "processing_speed": 1.0,
+    "waiting_queue_limit": 64,
+    "capacity": 8
+  },
+  {
+    "id": 2,
+    "processing_speed": 1.0,
+    "waiting_queue_limit": 64,
+    "capacity": 8
+  },
+  {
+    "id": 3,
+    "processing_speed": 1.0,
+    "waiting_queue_limit": 64,
+    "capacity": 8
+  }
+]

@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
             std::cerr << "Usage: oop_main --compare serversA.json serversB.json [requests.json]\n";
             return 1;
         }
-        return compareConfigurations(argv[2], argv[3], argc == 5 ? argv[4] : "assets/requests_normal.json");
+        return compareConfigurations(argv[2], argv[3], argc == 5 ? argv[4] : "assets/custom/requests_normal.json");
     }
     try {
         if (argc > 3) {
@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
         else if (strategyName == "least-loaded") strategy = std::make_unique<LeastLoadedStrategy>();
         else if (strategyName == "fastest") strategy = std::make_unique<FastestServerStrategy>();
         else throw std::invalid_argument("Unknown strategy: " + strategyName);
-        std::ifstream serversFile = fileLoading::loadFromFile("assets/servers.json");
-        std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/requests_normal.json");
+        std::ifstream serversFile = fileLoading::loadFromFile("assets/custom/servers.json");
+        std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/custom/requests_normal.json");
 
         std::vector<Server> servers = fileLoading::loadServersFromFile(serversFile);
         std::vector<Request> requests = fileLoading::loadRequestsFromFile(requestsFile);
