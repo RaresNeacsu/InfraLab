@@ -9,6 +9,7 @@
 #include <string>
 #include <stdexcept>
 #include <vector>
+#include <utility>
 
 #include "Simulation.h"
 
@@ -887,7 +888,7 @@ void testSimulation()
     Simulation copied(original);
     Simulation assigned(policyServers, {}, 20.0, std::make_unique<FastestServerStrategy>());
     assigned = original;
-    assigned = assigned;
+    assigned = std::as_const(assigned);
     policyStep = original.step();
     assert(policyStep == Simulation::StepResult::EventProcessed);
     assert(copied.collectReport().getServerReports()[1].getTotalRequestsCount() == 0);
