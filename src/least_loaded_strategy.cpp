@@ -1,6 +1,10 @@
 #include "LeastLoadedStrategy.h"
 
-std::optional<std::size_t> LeastLoadedStrategy::chooseServer(const std::vector<Server>& servers) {
+LeastLoadedStrategy::LeastLoadedStrategy() : RoutingStrategy()
+{
+}
+
+std::optional<std::size_t> LeastLoadedStrategy::chooseServerImpl(const std::vector<Server>& servers) {
     if (servers.empty()) {
         return std::nullopt;
     }

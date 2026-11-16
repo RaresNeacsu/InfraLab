@@ -12,10 +12,11 @@ class RoutingStrategy {
     public:
         RoutingStrategy() = default;
         virtual ~RoutingStrategy() = default;
-        virtual std::optional<std::size_t> chooseServer(const std::vector<Server>& servers) = 0;
+        std::optional<std::size_t> chooseServer(const std::vector<Server>& servers);
         friend std::ostream& operator<<(std::ostream& os, const RoutingStrategy& strategy);
         virtual std::unique_ptr<RoutingStrategy> clone() const = 0;
     protected:
+        virtual std::optional<std::size_t> chooseServerImpl(const std::vector<Server>& servers) = 0;
         virtual void print(std::ostream& os) const = 0;
 };
 

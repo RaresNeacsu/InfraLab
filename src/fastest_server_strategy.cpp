@@ -1,6 +1,10 @@
 #include "FastestServerStrategy.h"
 
-std::optional<std::size_t> FastestServerStrategy::chooseServer(const std::vector<Server>& servers) {
+FastestServerStrategy::FastestServerStrategy() : RoutingStrategy()
+{
+}
+
+std::optional<std::size_t> FastestServerStrategy::chooseServerImpl(const std::vector<Server>& servers) {
     if (servers.empty()) {
         return std::nullopt;
     }

@@ -1,6 +1,10 @@
 #include "RoundRobinStrategy.h"
 
-std::optional<std::size_t> RoundRobinStrategy::chooseServer(const std::vector<Server>& servers) {
+RoundRobinStrategy::RoundRobinStrategy() : RoutingStrategy()
+{
+}
+
+std::optional<std::size_t> RoundRobinStrategy::chooseServerImpl(const std::vector<Server>& servers) {
     if (servers.empty()) {
         return std::nullopt;
     }

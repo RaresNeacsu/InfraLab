@@ -4,12 +4,12 @@
 
 class LeastLoadedStrategy : public RoutingStrategy {
     public:
-        LeastLoadedStrategy() = default;
+        LeastLoadedStrategy();
         ~LeastLoadedStrategy() override = default;
-        std::optional<std::size_t> chooseServer(const std::vector<Server>& servers) override;
         std::unique_ptr<RoutingStrategy> clone() const override;
 
     protected:
+        std::optional<std::size_t> chooseServerImpl(const std::vector<Server>& servers) override;
         void print(std::ostream& os) const override;
 };
 
