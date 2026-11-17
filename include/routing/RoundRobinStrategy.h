@@ -1,7 +1,7 @@
 #ifndef ROUND_ROBIN_STRATEGY_H
 #define ROUND_ROBIN_STRATEGY_H
 
-#include "RoutingStrategy.h"
+#include "routing/RoutingStrategy.h"
 
 class RoundRobinStrategy : public RoutingStrategy {
     public:

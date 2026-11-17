@@ -1,7 +1,8 @@
-#include "Simulation.h"
-#include "Server.h"
-#include "SimulationReport.h"
-#include "ServerStats.h"
+#include "errors/ConfigurationError.h"
+#include "core/Simulation.h"
+#include "core/Server.h"
+#include "reports/SimulationReport.h"
+#include "reports/ServerStats.h"
 #include <stdexcept>
 #include <cmath>
 #include <limits>
@@ -13,16 +14,16 @@ Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Req
 {
     if (servers.empty())
     {
-        throw std::invalid_argument("Servers vector cannot be empty");
+        throw ConfigurationError("Servers vector cannot be empty");
     }
     if (!this->routingStrategy)
     {
-        throw std::invalid_argument("Routing strategy cannot be null");
+        throw ConfigurationError("Routing strategy cannot be null");
     }
     std::unordered_set<int> serverIds;
     for (const auto& server : servers) {
         if (!serverIds.insert(server.getId()).second) {
-            throw std::invalid_argument("Server IDs must be unique.");
+            throw ConfigurationError("Server IDs must be unique.");
         }
     }
     std::unordered_set<int> requestIds;
@@ -30,17 +31,17 @@ Simulation::Simulation(const std::vector<Server> &servers, const std::vector<Req
         const auto& request = incomingRequests[i];
         if (request.getState() != Request::State::PENDING ||
             !requestIds.insert(request.getId()).second) {
-            throw std::invalid_argument("Incoming requests must be pending and have unique IDs.");
+            throw ConfigurationError("Incoming requests must be pending and have unique IDs.");
         }
         if (i > 0 && request.getArrivalTime() < incomingRequests[i - 1].getArrivalTime()) {
-            throw std::invalid_argument("Incoming requests must be ordered by arrival time.");
+            throw ConfigurationError("Incoming requests must be ordered by arrival time.");
         }
     }
     if (maximumTime <= 0.0f || std::isnan(maximumTime) || std::isinf(maximumTime))
     {
-        throw std::invalid_argument("Maximum time must be a valid positive double");
+        throw ConfigurationError("Maximum time must be a valid positive double");
     }
-    
+
 }
 
 Simulation::Simulation(const Simulation& other)
@@ -98,7 +99,7 @@ Simulation::StepResult Simulation::step()
     if (nextTime > maximumTime)
     {
         currentTime = maximumTime;
-        return StepResult::TimeLimitReached;    
+        return StepResult::TimeLimitReached;
     }
     currentTime = nextTime;
     for(auto& server : servers)
@@ -132,7 +133,7 @@ SimulationReport Simulation::collectReport() const
 {
     std::vector<Request> completedRequests;
     std::vector<Request> rejectedRequests = globallyRejectedRequests;
-    std::vector<ServerStats> serverReports;  
+    std::vector<ServerStats> serverReports;
     for (const auto& server : servers)
     {
         std::vector<Request> completedLocalRequests;

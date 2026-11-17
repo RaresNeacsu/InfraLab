@@ -1,10 +1,13 @@
-#include "RoundRobinStrategy.h"
+#include "errors/ConfigurationError.h"
+#include "errors/FileError.h"
+#include "errors/InfraLabError.h"
+#include "routing/RoundRobinStrategy.h"
 #include <memory>
 #include <iostream>
 #include <string>
-#include "ComparisonReport.h"
-#include "Simulation.h"
-#include "file_loading.h"
+#include "reports/ComparisonReport.h"
+#include "core/Simulation.h"
+#include "io/file_loading.h"
 
 static SimulationReport runConfiguration(const std::vector<Server>& servers, const std::vector<Request>& requests, double timeLimit, const char* label)
 {
@@ -32,7 +35,7 @@ int compareConfigurations(const std::string& firstPath, const std::string& secon
         std::cout << "Input time limit for both simulations (in seconds): ";
         double timeLimit = 0.0;
         if (!(std::cin >> timeLimit)) {
-            throw std::runtime_error("Invalid input for time limit.");
+            throw ConfigurationError("Invalid input for time limit.");
         }
         const auto first = runConfiguration(firstServers, requests, timeLimit, "A");
         const auto second = runConfiguration(secondServers, requests, timeLimit, "B");
@@ -41,9 +44,12 @@ int compareConfigurations(const std::string& firstPath, const std::string& secon
         output << "Configuration A: " << firstPath << "\nConfiguration B: " << secondPath
                << "\nTraffic: " << requestsPath << "\n\n" << comparison;
         output.close();
-        if (!output) throw std::runtime_error("Failed to write comparison report.");
+        if (!output) throw FileError("Failed to write comparison report.");
         std::cout << "Comparison saved to assets/comparison_report.txt\n";
         return 0;
+    } catch (const InfraLabError& error) {
+        std::cerr << "Comparison error: " << error.what() << '\n';
+        return 1;
     } catch (const std::exception& error) {
         std::cerr << "Comparison error: " << error.what() << '\n';
         return 1;

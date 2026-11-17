@@ -1,12 +1,13 @@
-#include "RoundRobinStrategy.h"
+#include "errors/ConfigurationError.h"
+#include "routing/RoundRobinStrategy.h"
 #include <memory>
 #undef NDEBUG
 #include <cassert>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
-#include "ComparisonReport.h"
-#include "Simulation.h"
+#include "reports/ComparisonReport.h"
+#include "core/Simulation.h"
 
 static SimulationReport runScenario(const std::vector<Server>& servers, const std::vector<Request>& requests, double limit)
 {
@@ -65,7 +66,7 @@ void testComparisonReport()
         bool caught = false;
         try {
             const ComparisonReport invalid(empty, empty, 0, invalidLimit);
-        } catch (const std::invalid_argument&) {
+        } catch (const ConfigurationError&) {
             caught = true;
         }
         assert(caught);
@@ -75,7 +76,7 @@ void testComparisonReport()
         try {
             const ComparisonReport invalid(invalidFirst ? twoCompleted : empty,
                 invalidFirst ? empty : twoCompleted, 1, 10.0);
-        } catch (const std::invalid_argument&) {
+        } catch (const ConfigurationError&) {
             caught = true;
         }
         assert(caught);

@@ -1,3 +1,5 @@
+#include "errors/ConfigurationError.h"
+#include "errors/ReportError.h"
 #undef NDEBUG
 #include <cassert>
 #include <array>
@@ -8,7 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "SimulationReport.h"
+#include "reports/SimulationReport.h"
+#include "errors/RequestStateError.h"
 
 void testSimulationReport()
 {
@@ -30,7 +33,7 @@ void testSimulationReport()
         bool rejectedStatistics = false;
         try {
             const ServerStats invalid(values[0], values[1], values[2], values[3], values[4]);
-        } catch (const std::invalid_argument&) {
+        } catch (const ConfigurationError&) {
             rejectedStatistics = true;
         }
         assert(rejectedStatistics);
@@ -111,7 +114,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(std::vector<Request>{first, pending}, rejectedRequests);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -122,7 +125,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(std::vector<Request>{first, started}, rejectedRequests);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -133,7 +136,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(std::vector<Request>{first, rejected}, rejectedRequests);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -144,7 +147,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(completedRequests, std::vector<Request>{rejected, pending});
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -155,7 +158,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(completedRequests, std::vector<Request>{rejected, started});
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -166,7 +169,7 @@ void testSimulationReport()
     {
         const SimulationReport invalid(completedRequests, std::vector<Request>{rejected, first});
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -199,7 +202,7 @@ void testSimulationReport()
     {
         empty.averageWaitingTime();
     }
-    catch (const std::runtime_error &)
+    catch (const ReportError &)
     {
         caught = true;
     }
@@ -210,7 +213,7 @@ void testSimulationReport()
     {
         empty.averageResponseTime();
     }
-    catch (const std::runtime_error &)
+    catch (const ReportError &)
     {
         caught = true;
     }
@@ -223,7 +226,7 @@ void testSimulationReport()
     {
         rejectedOnly.averageWaitingTime();
     }
-    catch (const std::runtime_error &)
+    catch (const ReportError &)
     {
         caught = true;
     }
@@ -234,7 +237,7 @@ void testSimulationReport()
     {
         rejectedOnly.averageResponseTime();
     }
-    catch (const std::runtime_error &)
+    catch (const ReportError &)
     {
         caught = true;
     }
@@ -373,7 +376,7 @@ void testSimulationReport()
     bool emptySampleRejected = false;
     try {
         timingStatistics.calculateTimeStatistics({});
-    } catch (const std::invalid_argument&) {
+    } catch (const ConfigurationError&) {
         emptySampleRejected = true;
     }
     assert(emptySampleRejected);
@@ -388,7 +391,7 @@ void testSimulationReport()
         bool invalidTimingCaught = false;
         try {
             timingStatistics.calculateTimeStatistics({shortTimed, invalidRequest});
-        } catch (const std::invalid_argument&) {
+        } catch (const RequestStateError&) {
             invalidTimingCaught = true;
         }
         assert(invalidTimingCaught);
@@ -403,7 +406,7 @@ void testSimulationReport()
     try {
         ServerStats noCompletions(300, 0, 0, 0, 0);
         noCompletions.calculateTimeStatistics({shortTimed});
-    } catch (const std::invalid_argument&) {
+    } catch (const ConfigurationError&) {
         sampleCountRejected = true;
     }
     assert(sampleCountRejected);
@@ -414,7 +417,7 @@ void testSimulationReport()
         bool inconsistentReportRejected = false;
         try {
             const SimulationReport inconsistent({}, {}, reportStats);
-        } catch (const std::invalid_argument&) {
+        } catch (const ConfigurationError&) {
             inconsistentReportRejected = true;
         }
         assert(inconsistentReportRejected);
@@ -422,7 +425,7 @@ void testSimulationReport()
     bool uncoveredResultsRejected = false;
     try {
         const SimulationReport uncovered({shortTimed}, {}, {ServerStats(302, 0, 0, 0, 0)});
-    } catch (const std::invalid_argument&) {
+    } catch (const ConfigurationError&) {
         uncoveredResultsRejected = true;
     }
     assert(uncoveredResultsRejected);
@@ -443,7 +446,7 @@ void testSimulationReport()
     bool unavailableAverageCaught = false;
     try {
         idleStatistics.getAverageWaitingTime();
-    } catch (const std::logic_error&) {
+    } catch (const ReportError&) {
         unavailableAverageCaught = true;
     }
     assert(unavailableAverageCaught);

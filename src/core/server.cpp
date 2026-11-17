@@ -1,4 +1,8 @@
-#include "Server.h"
+#include "errors/InfraLabError.h"
+#include "errors/RequestStateError.h"
+#include "errors/ConfigurationError.h"
+#include "errors/SimulationTimeError.h"
+#include "core/Server.h"
 #include <stdexcept>
 #include <cmath>
 #include <utility>
@@ -14,7 +18,7 @@ double scheduledFinishTime(const Request& request, double processingSpeed)
     const double finish = request.getStartTime() + duration;
     if (!std::isfinite(duration) || duration <= 0.0 ||
         !std::isfinite(finish) || finish <= request.getStartTime()) {
-        throw std::overflow_error("Request processing time cannot be represented accurately.");
+        throw SimulationTimeError("Request processing time cannot be represented accurately.");
     }
     return finish;
 }
@@ -26,19 +30,19 @@ Server::Server(int id, double processingSpeed, int waitingQueueLimit, int capaci
 {
     if (id <= 0)
     {
-        throw std::invalid_argument("ID must be positive.");
+        throw ConfigurationError("ID must be positive.");
     }
     if (capacity <= 0)
     {
-        throw std::invalid_argument("Capacity must be positive.");
+        throw ConfigurationError("Capacity must be positive.");
     }
     if (processingSpeed <= 0.0f || std::isnan(processingSpeed) || std::isinf(processingSpeed))
     {
-        throw std::invalid_argument("Processing speed must be positive.");
+        throw ConfigurationError("Processing speed must be positive.");
     }
     if (waitingQueueLimit < 0)
     {
-        throw std::invalid_argument("Waiting queue limit cannot be negative.");
+        throw ConfigurationError("Waiting queue limit cannot be negative.");
     }
 }
 
@@ -61,15 +65,15 @@ bool Server::submitRequest(Request waitingRequest,double currentTime)
 {
     if(currentTime < 0.0f || std::isnan(currentTime) || std::isinf(currentTime))
     {
-        throw std::invalid_argument("Current time must be a valid non-negative double.");
+        throw ConfigurationError("Current time must be a valid non-negative double.");
     }
     if(waitingRequest.getArrivalTime() > currentTime)
     {
-        throw std::invalid_argument("Request arrival time cannot be in the future.");
+        throw ConfigurationError("Request arrival time cannot be in the future.");
     }
     if(waitingRequest.getState() != Request::State::PENDING)
     {
-        throw std::runtime_error("Only pending requests can be added to the queue.");
+        throw RequestStateError("Only pending requests can be added to the queue.");
     }
     waitingQueueToActive(currentTime);
 
@@ -105,7 +109,7 @@ void Server::removeWaitingRequestQueue()
     }
     else
     {
-        throw std::runtime_error("No requests to remove.");
+        throw InfraLabError("Internal server error: no requests to remove.");
     }
 }
 
@@ -119,7 +123,7 @@ void Server::addRequestActive(Request activeRequest, double currentTime)
     }
     else
     {
-        throw std::runtime_error("Server is at full capacity.");
+        throw InfraLabError("Internal server error: cannot activate request.");
     }
 }
 
@@ -131,7 +135,7 @@ void Server::removeRequestActive()
     }
     else
     {
-        throw std::runtime_error("No requests to remove.");
+        throw InfraLabError("Internal server error: no requests to remove.");
     }
 }
 
@@ -149,7 +153,7 @@ void Server::completeActiveRequest(double currentTime)
 {
     if(currentTime < 0.0f || std::isnan(currentTime) || std::isinf(currentTime))
     {
-        throw std::invalid_argument("Current time must be a valid non-negative double.");
+        throw ConfigurationError("Current time must be a valid non-negative double.");
     }
     if (!activeRequests.empty())
     {

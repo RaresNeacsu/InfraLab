@@ -1,9 +1,9 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
-#include "Server.h"
-#include "Request.h"
-#include "SimulationReport.h"
-#include "RoutingStrategy.h"
+#include "core/Server.h"
+#include "core/Request.h"
+#include "reports/SimulationReport.h"
+#include "routing/RoutingStrategy.h"
 #include <memory>
 #include <vector>
 #include <cstddef>

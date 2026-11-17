@@ -1,20 +1,22 @@
-#include "Request.h"
+#include "errors/ConfigurationError.h"
+#include "core/Request.h"
 #include <cmath>
 #include <stdexcept>
+#include "errors/RequestStateError.h"
 
 Request::Request(int id, double arrivalTime, double workUnit) : id(id), arrivalTime(arrivalTime), workUnit(workUnit), state(State::PENDING)
 {
     if (id <= 0)
     {
-        throw std::invalid_argument("ID must be positive.");
+        throw ConfigurationError("ID must be positive.");
     }
     if (arrivalTime < 0.0f || std::isnan(arrivalTime) || std::isinf(arrivalTime))
     {
-        throw std::invalid_argument("Arrival time must be a valid non-negative double.");
+        throw ConfigurationError("Arrival time must be a valid non-negative double.");
     }
     if (workUnit <= 0.0f || std::isnan(workUnit) || std::isinf(workUnit))
     {
-        throw std::invalid_argument("Work unit must be a valid positive double.");
+        throw ConfigurationError("Work unit must be a valid positive double.");
     }
 }
 
@@ -22,40 +24,40 @@ void Request::start(double requestStartTime)
 {
     if(requestStartTime < 0.0f || std::isnan(requestStartTime)|| std::isinf(requestStartTime))
     {
-        throw std::invalid_argument("Start time must be a valid non-negative double.");
+        throw ConfigurationError("Start time must be a valid non-negative double.");
     }
     if(state == State::PENDING)
     {
         if(requestStartTime < arrivalTime)
         {
-            throw std::invalid_argument("Start time cannot be before arrival time.");
+            throw ConfigurationError("Start time cannot be before arrival time.");
         }
         this->startTime = requestStartTime;
         state = State::IN_PROGRESS;
     }
     else
     {
-        throw std::invalid_argument("Request can only be started if it is in PENDING state.");
+        throw RequestStateError("Request can only be started if it is in PENDING state.");
     }
 }
 void Request::complete(double requestFinishTime)
 {
     if(requestFinishTime < 0.0f || std::isnan(requestFinishTime) || std::isinf(requestFinishTime))
     {
-        throw std::invalid_argument("Finish time must be a valid non-negative double.");
+        throw ConfigurationError("Finish time must be a valid non-negative double.");
     }
     if(state == State::IN_PROGRESS)
     {
         if(requestFinishTime <= startTime)
         {
-            throw std::invalid_argument("Finish time must be after start time.");
+            throw ConfigurationError("Finish time must be after start time.");
         }
         state = State::COMPLETED;
-        this->finishTime = requestFinishTime;  
+        this->finishTime = requestFinishTime;
     }
     else
     {
-        throw std::invalid_argument("Request can only be completed if it is in IN_PROGRESS state.");
+        throw RequestStateError("Request can only be completed if it is in IN_PROGRESS state.");
     }
 }
 
@@ -67,7 +69,7 @@ void Request::reject()
     }
     else
     {
-        throw std::invalid_argument("Request can only be rejected if it is in PENDING state.");
+        throw RequestStateError("Request can only be rejected if it is in PENDING state.");
     }
 }
 
@@ -79,8 +81,8 @@ double Request::waitingTime() const
     }
     else
     {
-        throw std::invalid_argument("Waiting time can only be calculated for started requests.");
-    }   
+        throw RequestStateError("Waiting time can only be calculated for started requests.");
+    }
 }
 
 double Request::responseTime() const
@@ -91,7 +93,7 @@ double Request::responseTime() const
     }
     else
     {
-        throw std::invalid_argument("Response time can only be calculated for completed requests.");
+        throw RequestStateError("Response time can only be calculated for completed requests.");
     }
 }
 

@@ -7,7 +7,10 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "file_loading.h"
+#include "io/file_loading.h"
+#include "errors/ConfigurationError.h"
+#include "errors/FileError.h"
+#include "errors/InfraLabError.h"
 
 namespace {
 class TemporaryDirectory {
@@ -86,14 +89,13 @@ void testFileLoading()
     const auto noRequests = fileLoading::loadRequestsFromFile(emptyRequests);
     assert(noRequests.empty());
 
-    // Parsing errors belong to the private JSON dependency; test rejection
-    // through the public interface without including that dependency here.
+    // Invalid JSON and configuration values are reported through our public exception.
     for (const char* invalidJson : {"", "[", "[{}", "not json", "{}", "null", "42"}) {
-        expectException<std::exception>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidJson);
             fileLoading::loadServersFromFile(input);
         });
-        expectException<std::exception>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidJson);
             fileLoading::loadRequestsFromFile(input);
         });
@@ -104,7 +106,7 @@ void testFileLoading()
         R"([{"id":1,"processing_speed":"fast","waiting_queue_limit":0,"capacity":1}])",
         R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":null}])"
     }) {
-        expectException<std::exception>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidServer);
             fileLoading::loadServersFromFile(input);
         });
@@ -115,7 +117,7 @@ void testFileLoading()
         R"([{"id":1,"arrival_time":"later","work_units":1}])",
         R"([{"id":1,"arrival_time":0,"work_units":null}])"
     }) {
-        expectException<std::exception>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidRequest);
             fileLoading::loadRequestsFromFile(input);
         });
@@ -128,7 +130,7 @@ void testFileLoading()
         R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":0}])",
         R"([{"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1.5}])"
     }) {
-        expectException<std::invalid_argument>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidServer);
             fileLoading::loadServersFromFile(input);
         });
@@ -143,7 +145,7 @@ void testFileLoading()
         R"([{"id":1,"arrival_time":0,"work_units":1},
             {"id":1,"arrival_time":2,"work_units":3}])"
     }) {
-        expectException<std::invalid_argument>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidRequest);
             fileLoading::loadRequestsFromFile(input);
         });
@@ -151,18 +153,18 @@ void testFileLoading()
 
     // Both signed and unsigned JSON integers must fit the public int ID type.
     for (const char* id : {"9223372036854775807", "18446744073709551615", "-9223372036854775808"}) {
-        expectException<std::out_of_range>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(std::string("[{\"id\":") + id +
                 ",\"arrival_time\":0,\"work_units\":1}]");
             fileLoading::loadRequestsFromFile(input);
         });
-        expectException<std::out_of_range>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(std::string("[{\"id\":") + id +
                 ",\"processing_speed\":1,\"waiting_queue_limit\":0,\"capacity\":1}]");
             fileLoading::loadServersFromFile(input);
         });
     }
-    expectException<std::invalid_argument>([] {
+    expectException<ConfigurationError>([] {
         std::istringstream input(R"([
             {"id":1,"processing_speed":1,"waiting_queue_limit":0,"capacity":1},
             {"id":1,"processing_speed":2,"waiting_queue_limit":0,"capacity":1}
@@ -173,18 +175,25 @@ void testFileLoading()
         R"([{"id":1,"arrival_time":true,"work_units":1}])",
         R"([{"id":1,"arrival_time":0,"work_units":true}])"
     }) {
-        expectException<std::invalid_argument>([&] {
+        expectException<ConfigurationError>([&] {
             std::istringstream input(invalidNumeric);
             fileLoading::loadRequestsFromFile(input);
         });
     }
-    expectException<std::invalid_argument>([] {
+    expectException<ConfigurationError>([] {
         std::istringstream input(R"([{"id":1,"processing_speed":true,"waiting_queue_limit":0,"capacity":1}])");
         fileLoading::loadServersFromFile(input);
     });
     TemporaryDirectory temporary;
     const auto missing = (temporary.path() / "missing.json").string();
-    expectException<std::runtime_error>([&] { fileLoading::loadFromFile(missing); });
+    expectException<FileError>([&] { fileLoading::loadFromFile(missing); });
+    bool caughtThroughBase = false;
+    try {
+        fileLoading::loadFromFile(missing);
+    } catch (const InfraLabError& error) {
+        caughtThroughBase = std::string(error.what()).find(missing) != std::string::npos;
+    }
+    assert(caughtThroughBase);
     const auto requestPath = (temporary.path() / "requests.json").string();
     {
         auto output = fileLoading::saveToFile(requestPath);
@@ -200,7 +209,7 @@ void testFileLoading()
         assert(loadedRequests[0].getArrivalTime() == 0.25);
         assert(loadedRequests[0].getWorkUnit() == 1.5);
     }
-    expectException<std::runtime_error>([&] {
+    expectException<FileError>([&] {
         fileLoading::saveToFile((temporary.path() / "missing-parent" / "report.txt").string());
     });
     {

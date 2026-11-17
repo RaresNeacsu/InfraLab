@@ -1,6 +1,8 @@
-#include "RoundRobinStrategy.h"
-#include "LeastLoadedStrategy.h"
-#include "FastestServerStrategy.h"
+#include "errors/ConfigurationError.h"
+#include "errors/SimulationTimeError.h"
+#include "routing/RoundRobinStrategy.h"
+#include "routing/LeastLoadedStrategy.h"
+#include "routing/FastestServerStrategy.h"
 #include <memory>
 #undef NDEBUG
 #include <cassert>
@@ -11,7 +13,7 @@
 #include <vector>
 #include <utility>
 
-#include "Simulation.h"
+#include "core/Simulation.h"
 
 namespace {
 void assertCurrentTime(const Simulation& simulation, float expectedTime)
@@ -32,13 +34,21 @@ void testSimulation()
     const std::vector<Request> traffic{Request(1, 1.0f, 2)};
     bool caught = false;
 
+    bool nullStrategyCaught = false;
+    try {
+        const Simulation noStrategy(servers, noTraffic, 10.0, nullptr);
+    } catch (const ConfigurationError&) {
+        nullStrategyCaught = true;
+    }
+    assert(nullStrategyCaught);
+
     // test constructor - empty servers ///////////////////////////////////////////
     caught = false;
     try
     {
         const Simulation simulation(noServers, noTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -49,7 +59,7 @@ void testSimulation()
     {
         const Simulation simulation(noServers, traffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -61,7 +71,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -72,7 +82,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -91,7 +101,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{started}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -102,7 +112,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{started, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -113,7 +123,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{traffic.front(), started}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -124,7 +134,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{completed}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -135,7 +145,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{completed, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -146,7 +156,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{traffic.front(), completed}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -157,7 +167,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{rejected}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -168,7 +178,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{rejected, traffic.front()}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -179,7 +189,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{traffic.front(), rejected}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -191,7 +201,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{Request(4, 2.0f, 1), Request(5, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -202,7 +212,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, std::vector<Request>{Request(4, 0.0f, 1), Request(5, 2.0f, 1), Request(6, 1.0f, 1)}, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -216,7 +226,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, orderedTraffic, 10.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -228,7 +238,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, 0.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -239,7 +249,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, -1.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -250,7 +260,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, std::numeric_limits<float>::quiet_NaN(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -261,7 +271,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -272,7 +282,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, traffic, -std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -284,7 +294,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, 0.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -295,7 +305,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, -1.0f, std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -306,7 +316,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::quiet_NaN(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -317,7 +327,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -328,7 +338,7 @@ void testSimulation()
     {
         const Simulation simulation(servers, noTraffic, -std::numeric_limits<float>::infinity(), std::make_unique<RoundRobinStrategy>());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -837,7 +847,7 @@ void testSimulation()
         bool durationRejected = false;
         try {
             invalidDuration.step();
-        } catch (const std::overflow_error&) {
+        } catch (const SimulationTimeError&) {
             durationRejected = true;
         }
         assert(durationRejected);
@@ -860,7 +870,7 @@ void testSimulation()
     bool duplicateServerRejected = false;
     try {
         const Simulation duplicateServers({Server(405, 1.0, 0, 1), Server(405, 2.0, 0, 1)}, {}, 10.0, std::make_unique<RoundRobinStrategy>());
-    } catch (const std::invalid_argument&) {
+    } catch (const ConfigurationError&) {
         duplicateServerRejected = true;
     }
     assert(duplicateServerRejected);

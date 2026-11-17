@@ -1,3 +1,4 @@
+#include "errors/ConfigurationError.h"
 // Main ships no test framework on purpose: plain assert / static_assert only.
 // Full framework examples live on tests/gtest and tests/Boost-ext-ut branches.
 
@@ -10,7 +11,8 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "Request.h"
+#include "core/Request.h"
+#include "errors/RequestStateError.h"
 
 void testRequest()
 {
@@ -19,7 +21,7 @@ void testRequest()
     {
         Request r1(1, 0.0f, 1);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -29,7 +31,7 @@ void testRequest()
     {
         Request r2(1, 5.0f, 10);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -39,7 +41,7 @@ void testRequest()
     {
         Request r3(0, 0.0f, 1);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -49,7 +51,7 @@ void testRequest()
     {
         Request r4(-1, 0.0f, 1);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -59,7 +61,7 @@ void testRequest()
     {
         Request r5(1, -1.0f, 1);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -69,7 +71,7 @@ void testRequest()
     {
         Request r6(1, 0.0f, 0);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -79,7 +81,7 @@ void testRequest()
     {
         Request r7(1, 0.0f, -1);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -92,7 +94,7 @@ void testRequest()
         Request r8(1, 5.0f, 10);
         r8.start(4.0f); // start time before arrival time
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -103,7 +105,7 @@ void testRequest()
         Request r9(1, 5.0f, 10);
         r9.start(5.0f); // valid start time
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -114,7 +116,7 @@ void testRequest()
     {
         r10.start(3.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -124,7 +126,7 @@ void testRequest()
     {
         r10.start(5.0f); // valid start time
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -134,7 +136,7 @@ void testRequest()
     {
         r10.start(6.0f); // starting again after already started
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -147,7 +149,7 @@ void testRequest()
         Request r11(1, 5.0f, 10);
         r11.complete(4.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -159,7 +161,7 @@ void testRequest()
         r12.start(5.0f);
         r12.complete(4.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -171,7 +173,7 @@ void testRequest()
         r13.start(5.25f);
         r13.complete(5.75f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -180,7 +182,7 @@ void testRequest()
     {
         r13.complete(7.0f); // completing again after already completed
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -192,7 +194,7 @@ void testRequest()
         r14.start(5.0f);
         r14.complete(5.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -202,7 +204,7 @@ void testRequest()
     {
         r14.complete(7.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -215,7 +217,7 @@ void testRequest()
     {
         r15.waitingTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -226,7 +228,7 @@ void testRequest()
     {
         r15.waitingTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -238,7 +240,7 @@ void testRequest()
         assert(r15.waitingTime() == 0.25f && "Expected waiting time to equal start time minus arrival time");
         assert(r15.waitingTime() == 0.25f && "Expected repeated waiting time calls to preserve the result");
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -251,7 +253,7 @@ void testRequest()
     {
         assert(r16.waitingTime() == 0.0f && "Expected zero waiting time when started on arrival");
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -262,7 +264,7 @@ void testRequest()
     {
         r16.responseTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -275,7 +277,7 @@ void testRequest()
     {
         r17.responseTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -286,7 +288,7 @@ void testRequest()
     {
         r17.responseTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -297,7 +299,7 @@ void testRequest()
     {
         assert(r17.responseTime() == 2.0f && "Expected response time to equal finish time minus arrival time");
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -312,7 +314,7 @@ void testRequest()
         assert(r18.responseTime() == 3.0f && "Expected response time to equal finish time minus arrival time");
         assert(r18.waitingTime() == 1.0f && "Expected waiting time to equal start time minus arrival time");
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -325,7 +327,7 @@ void testRequest()
     {
         r19.reject();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -335,7 +337,7 @@ void testRequest()
     {
         r19.reject();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -345,7 +347,7 @@ void testRequest()
     {
         r19.start(6.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -355,7 +357,7 @@ void testRequest()
     {
         r19.complete(7.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -365,7 +367,7 @@ void testRequest()
     {
         r19.waitingTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -375,7 +377,7 @@ void testRequest()
     {
         r19.responseTime();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -387,7 +389,7 @@ void testRequest()
     {
         r20.reject();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -398,7 +400,7 @@ void testRequest()
     {
         r20.complete(7.0f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -408,7 +410,7 @@ void testRequest()
     {
         r20.reject();
     }
-    catch (const std::invalid_argument &)
+    catch (const RequestStateError &)
     {
         caught = true;
     }
@@ -479,7 +481,7 @@ void testRequest()
     {
         Request invalidWork(101, 0.0f, -0.25f);
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -490,7 +492,7 @@ void testRequest()
     {
         Request invalidWork(101, 0.0f, std::numeric_limits<float>::quiet_NaN());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -501,7 +503,7 @@ void testRequest()
     {
         Request invalidWork(101, 0.0f, std::numeric_limits<float>::infinity());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }
@@ -512,7 +514,7 @@ void testRequest()
     {
         Request invalidWork(101, 0.0f, -std::numeric_limits<float>::infinity());
     }
-    catch (const std::invalid_argument &)
+    catch (const ConfigurationError &)
     {
         caught = true;
     }

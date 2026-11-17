@@ -1,7 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 #include <queue>
-#include "Request.h"
+#include "core/Request.h"
 #include <ostream>
 #include <vector>
 class Server{

@@ -1,7 +1,7 @@
 #ifndef FASTEST_SERVER_STRATEGY_H
 #define FASTEST_SERVER_STRATEGY_H
 
-#include "RoutingStrategy.h"
+#include "routing/RoutingStrategy.h"
 
 class FastestServerStrategy : public RoutingStrategy {
 public:

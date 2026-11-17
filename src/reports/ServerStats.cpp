@@ -1,26 +1,28 @@
-#include "ServerStats.h"
-#include "Request.h"
+#include "errors/ReportError.h"
+#include "errors/ConfigurationError.h"
+#include "reports/ServerStats.h"
+#include "core/Request.h"
 #include <stdexcept>
 #include <vector>
 
 ServerStats::ServerStats(int id, int completedRequestsCount, int rejectedRequestsCount, int totalRequestsCount, int maxWaitingQueueSize)
-    : id(id), completedRequestsCount(completedRequestsCount), rejectedRequestsCount(rejectedRequestsCount), 
+    : id(id), completedRequestsCount(completedRequestsCount), rejectedRequestsCount(rejectedRequestsCount),
     totalRequestsCount(totalRequestsCount), maxWaitingQueueSize(maxWaitingQueueSize)
 {
     if (id <= 0) {
-        throw std::invalid_argument("Server statistics ID must be positive.");
+        throw ConfigurationError("Server statistics ID must be positive.");
     }
     if (completedRequestsCount < 0 || rejectedRequestsCount < 0 ||
         totalRequestsCount < 0 || maxWaitingQueueSize < 0) {
-        throw std::invalid_argument("Server statistics counters must be non-negative.");
+        throw ConfigurationError("Server statistics counters must be non-negative.");
     }
     // Subtract only after checking the bounds, avoiding signed overflow.
     if (completedRequestsCount > totalRequestsCount ||
         rejectedRequestsCount > totalRequestsCount - completedRequestsCount) {
-        throw std::invalid_argument("Completed and rejected counts cannot exceed total requests.");
+        throw ConfigurationError("Completed and rejected counts cannot exceed total requests.");
     }
     if (maxWaitingQueueSize > totalRequestsCount - rejectedRequestsCount) {
-        throw std::invalid_argument("Queue peak cannot exceed the number of accepted requests.");
+        throw ConfigurationError("Queue peak cannot exceed the number of accepted requests.");
     }
 }
 
@@ -52,7 +54,7 @@ double ServerStats::getUnprocessedRate() const
 void ServerStats::calculateTimeStatistics(const std::vector<Request>& completedRequests)
 {
     if (completedRequests.size() != static_cast<std::size_t>(completedRequestsCount)) {
-        throw std::invalid_argument("Timing sample count must match completed requests count.");
+        throw ConfigurationError("Timing sample count must match completed requests count.");
     }
     double sumWaitingTime = 0.0;
     double sumResponseTime = 0.0;
@@ -77,7 +79,7 @@ void ServerStats::calculateTimeStatistics(const std::vector<Request>& completedR
 double ServerStats::getAverageWaitingTime() const
 {
     if (!timeStatisticsAvailable) {
-        throw std::logic_error("Time statistics are not available.");
+        throw ReportError("Time statistics are not available.");
     }
     return averageWaitingTime;
 }

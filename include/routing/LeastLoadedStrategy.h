@@ -1,6 +1,6 @@
 #ifndef LEAST_LOADED_STRATEGY_H
 #define LEAST_LOADED_STRATEGY_H
-#include "RoutingStrategy.h"
+#include "routing/RoutingStrategy.h"
 
 class LeastLoadedStrategy : public RoutingStrategy {
     public:

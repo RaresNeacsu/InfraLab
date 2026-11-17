@@ -1,12 +1,15 @@
-#include "RoundRobinStrategy.h"
-#include "LeastLoadedStrategy.h"
-#include "FastestServerStrategy.h"
+#include "errors/ConfigurationError.h"
+#include "errors/FileError.h"
+#include "errors/InfraLabError.h"
+#include "routing/RoundRobinStrategy.h"
+#include "routing/LeastLoadedStrategy.h"
+#include "routing/FastestServerStrategy.h"
 #include <memory>
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "Simulation.h"
-#include "file_loading.h"
+#include "core/Simulation.h"
+#include "io/file_loading.h"
 
 int compareConfigurations(const std::string& firstPath, const std::string& secondPath, const std::string& requestsPath);
 
@@ -20,14 +23,14 @@ int main(int argc, char** argv) {
     }
     try {
         if (argc > 3) {
-            throw std::invalid_argument("Usage: oop_main [requests.json] [round-robin|least-loaded|fastest]");
+            throw ConfigurationError("Usage: oop_main [requests.json] [round-robin|least-loaded|fastest]");
         }
         const std::string strategyName = argc == 3 ? argv[2] : "round-robin";
         std::unique_ptr<RoutingStrategy> strategy;
         if (strategyName == "round-robin") strategy = std::make_unique<RoundRobinStrategy>();
         else if (strategyName == "least-loaded") strategy = std::make_unique<LeastLoadedStrategy>();
         else if (strategyName == "fastest") strategy = std::make_unique<FastestServerStrategy>();
-        else throw std::invalid_argument("Unknown strategy: " + strategyName);
+        else throw ConfigurationError("Unknown strategy: " + strategyName);
         std::ifstream serversFile = fileLoading::loadFromFile("assets/custom/servers.json");
         std::ifstream requestsFile = fileLoading::loadFromFile(argc > 1 ? argv[1] : "assets/custom/requests_normal.json");
 
@@ -48,7 +51,7 @@ int main(int argc, char** argv) {
         std::cout << "\nInput time limit for the simulation (in seconds): ";
         float timeLimit;
         if(!(std::cin >> timeLimit)){
-            throw std::runtime_error("Invalid input for time limit. Please enter a valid number.");
+            throw ConfigurationError("Invalid input for time limit. Please enter a valid number.");
         }
 
 
@@ -70,7 +73,7 @@ int main(int argc, char** argv) {
 
         std::ofstream reportFile = fileLoading::saveToFile("assets/simulation_report.txt");
         if (!reportFile) {
-            throw std::runtime_error("Failed to create simulation report file.");
+            throw FileError("Failed to create simulation report file.");
         }
         reportFile << report;
         reportFile<< "Unfinished requests - " <<requests.size() - report.getCompletedRequestsCount() - report.getRejectedRequestsCount() <<"/" << requests.size() << " " << std::endl;
@@ -99,10 +102,16 @@ int main(int argc, char** argv) {
         }
         reportFile.close();
         if(!reportFile) {
-            throw std::runtime_error("Failed to write simulation report to file.");
+            throw FileError("Failed to write simulation report to file.");
         }
 
         std::cout << "Simulation report saved to assets/simulation_report.txt" << std::endl;
+    } catch (const FileError& e) {
+        std::cerr << "File error: " << e.what() << std::endl;
+        return 1;
+    } catch (const InfraLabError& e) {
+        std::cerr << "InfraLab error: " << e.what() << std::endl;
+        return 1;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;

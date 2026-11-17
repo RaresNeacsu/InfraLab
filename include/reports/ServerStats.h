@@ -2,7 +2,7 @@
 #define ServerStats_H
 #include <ostream>
 #include <vector>
-#include "Request.h"
+#include "core/Request.h"
 
 class ServerStats
 {

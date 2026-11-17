@@ -70,17 +70,23 @@ add_executable(${MAIN_EXECUTABLE_NAME}
 )
 target_sources(${MAIN_LIBRARY_NAME}
     PRIVATE
-        src/request.cpp
-        src/server.cpp
-        src/simulation.cpp
-        src/simulation_report.cpp
-        src/file_loading.cpp
-        src/ServerStats.cpp
-        src/comparison_report.cpp
-        src/routing_strategy.cpp
-        src/round_robin_strategy.cpp
-        src/least_loaded_strategy.cpp
-        src/fastest_server_strategy.cpp
+        src/core/request.cpp
+        src/core/server.cpp
+        src/core/simulation.cpp
+        src/reports/simulation_report.cpp
+        src/io/file_loading.cpp
+        src/reports/ServerStats.cpp
+        src/reports/comparison_report.cpp
+        src/routing/routing_strategy.cpp
+        src/routing/round_robin_strategy.cpp
+        src/routing/least_loaded_strategy.cpp
+        src/routing/fastest_server_strategy.cpp
+        src/errors/infralab_error.cpp
+        src/errors/file_error.cpp
+        src/errors/configuration_error.cpp
+        src/errors/request_state_error.cpp
+        src/errors/simulation_time_error.cpp
+        src/errors/report_error.cpp
 )
 
 # NOTE: Add all defined targets (e.g. executables, libraries, etc. )

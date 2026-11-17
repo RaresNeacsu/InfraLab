@@ -2,8 +2,8 @@
 #define SIMULATION_REPORT_H
 #include <ostream>
 #include <vector>
-#include "Request.h"
-#include "ServerStats.h"
+#include "core/Request.h"
+#include "reports/ServerStats.h"
 
 class SimulationReport
 {

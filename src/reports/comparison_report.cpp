@@ -1,4 +1,5 @@
-#include "ComparisonReport.h"
+#include "errors/ConfigurationError.h"
+#include "reports/ComparisonReport.h"
 #include <cmath>
 #include <stdexcept>
 
@@ -8,7 +9,7 @@ static std::size_t unfinishedCount(const SimulationReport &report, std::size_t t
     const auto rejected = report.getRejectedRequests().size();
     if (completed > total || rejected > total - completed)
     {
-        throw std::invalid_argument("Report results exceed the comparison traffic count.");
+        throw ConfigurationError("Report results exceed the comparison traffic count.");
     }
     return total - completed - rejected;
 }
@@ -34,7 +35,7 @@ ComparisonReport::ComparisonReport(const SimulationReport &first, const Simulati
 {
     if (!std::isfinite(timeLimit) || timeLimit <= 0.0)
     {
-        throw std::invalid_argument("Comparison time limit must be finite and positive.");
+        throw ConfigurationError("Comparison time limit must be finite and positive.");
     }
     unfinishedCount(firstReport, totalRequests);
     unfinishedCount(secondReport, totalRequests);

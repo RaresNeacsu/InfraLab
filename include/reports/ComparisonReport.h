@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include <ostream>
-#include "SimulationReport.h"
+#include "reports/SimulationReport.h"
 
 class ComparisonReport {
 public:

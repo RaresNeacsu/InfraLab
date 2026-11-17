@@ -1,4 +1,6 @@
-#include "SimulationReport.h"
+#include "errors/ReportError.h"
+#include "errors/ConfigurationError.h"
+#include "reports/SimulationReport.h"
 #include <stdexcept>
 #include <unordered_set>
 
@@ -10,14 +12,14 @@ SimulationReport::SimulationReport(const std::vector<Request> &completedRequests
     {
         if (request.getState() != Request::State::COMPLETED || !requestIds.insert(request.getId()).second)
         {
-            throw std::invalid_argument("All requests in completedRequests must be in COMPLETED state.");
+            throw ConfigurationError("All requests in completedRequests must be in COMPLETED state.");
         }
     }
     for (const auto &request : rejectedRequests)
     {
         if (request.getState() != Request::State::REJECTED || !requestIds.insert(request.getId()).second)
         {
-            throw std::invalid_argument("All requests in rejectedRequests must be in REJECTED state.");
+            throw ConfigurationError("All requests in rejectedRequests must be in REJECTED state.");
         }
     }
     if (!serverReports.empty()) {
@@ -29,13 +31,13 @@ SimulationReport::SimulationReport(const std::vector<Request> &completedRequests
             const auto rejected = static_cast<std::size_t>(stats.getRejectedRequestsCount());
             if (!serverIds.insert(stats.getId()).second ||
                 completed > remainingCompleted || rejected > remainingRejected) {
-                throw std::invalid_argument("Server statistics do not match report results.");
+                throw ConfigurationError("Server statistics do not match report results.");
             }
             remainingCompleted -= completed;
             remainingRejected -= rejected;
         }
         if (remainingCompleted != 0) {
-            throw std::invalid_argument("Server statistics do not cover every report result.");
+            throw ConfigurationError("Server statistics do not cover every report result.");
         }
     }
 
@@ -45,7 +47,7 @@ double SimulationReport::averageWaitingTime() const
 {
     if (completedRequests.empty())
     {
-        throw std::runtime_error("No completed requests to calculate average waiting time.");
+        throw ReportError("No completed requests to calculate average waiting time.");
     }
     double totalWaitingTime = 0.0f;
     for (const auto &request : completedRequests)
@@ -59,7 +61,7 @@ double SimulationReport::averageResponseTime() const
 {
     if (completedRequests.empty())
     {
-        throw std::runtime_error("No completed requests to calculate average response time.");
+        throw ReportError("No completed requests to calculate average response time.");
     }
     double totalResponseTime = 0.0f;
     for (const auto &request : completedRequests)

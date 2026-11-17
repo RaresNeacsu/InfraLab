@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "FastestServerStrategy.h"
-#include "LeastLoadedStrategy.h"
-#include "RoundRobinStrategy.h"
+#include "routing/FastestServerStrategy.h"
+#include "routing/LeastLoadedStrategy.h"
+#include "routing/RoundRobinStrategy.h"
 
 void testRoutingStrategy()
 {

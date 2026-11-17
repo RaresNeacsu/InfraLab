@@ -1,3 +1,5 @@
+#include "errors/RequestStateError.h"
+#include "errors/ConfigurationError.h"
 #undef NDEBUG
 #include <array>
 #include <cassert>
@@ -7,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "Server.h"
+#include "core/Server.h"
 
 void testServer()
 {
@@ -27,7 +29,7 @@ void testServer()
     {
         Server invalid(0, 2.5f, 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -37,7 +39,7 @@ void testServer()
     {
         Server invalid(-1, 2.5f, 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -47,7 +49,7 @@ void testServer()
     {
         Server invalid(1, 2.5f, 2, 0);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -57,7 +59,7 @@ void testServer()
     {
         Server invalid(1, 2.5f, 2, -1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -67,7 +69,7 @@ void testServer()
     {
         Server invalid(1, 0.0f, 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -77,7 +79,7 @@ void testServer()
     {
         Server invalid(1, -1.0f, 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -87,7 +89,7 @@ void testServer()
     {
         Server invalid(1, std::numeric_limits<float>::quiet_NaN(), 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -97,7 +99,7 @@ void testServer()
     {
         Server invalid(1, std::numeric_limits<float>::infinity(), 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -107,7 +109,7 @@ void testServer()
     {
         Server invalid(1, -std::numeric_limits<float>::infinity(), 2, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -117,7 +119,7 @@ void testServer()
     {
         Server invalid(1, 2.5f, -1, 1);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -193,7 +195,7 @@ void testServer()
         {
             validation.submitRequest(first, time);
         }
-        catch (const std::invalid_argument&)
+        catch (const ConfigurationError&)
         {
             caught = true;
         }
@@ -207,7 +209,7 @@ void testServer()
     {
         validation.submitRequest(first, 0.5f);
     }
-    catch (const std::invalid_argument&)
+    catch (const ConfigurationError&)
     {
         caught = true;
     }
@@ -226,7 +228,7 @@ void testServer()
         {
             validation.submitRequest(request, 1.0f);
         }
-        catch (const std::runtime_error&)
+        catch (const RequestStateError&)
         {
             caught = true;
         }
@@ -245,7 +247,7 @@ void testServer()
         {
             validation.submitRequest(newcomer, time);
         }
-        catch (const std::invalid_argument&)
+        catch (const ConfigurationError&)
         {
             caught = true;
         }
@@ -277,7 +279,7 @@ void testServer()
         {
             transfer.waitingQueueToActive(time);
         }
-        catch (const std::invalid_argument&)
+        catch (const ConfigurationError&)
         {
             caught = true;
         }
@@ -309,7 +311,7 @@ void testServer()
         {
             concurrent.completeActiveRequest(time);
         }
-        catch (const std::invalid_argument&)
+        catch (const ConfigurationError&)
         {
             caught = true;
         }
@@ -360,7 +362,7 @@ void testServer()
         {
             empty.completeActiveRequest(time);
         }
-        catch (const std::invalid_argument&)
+        catch (const ConfigurationError&)
         {
             caught = true;
         }

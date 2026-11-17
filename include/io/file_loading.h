@@ -4,8 +4,8 @@
 #include <fstream>
 #include <string>
 #include <stdexcept>
-#include "Server.h"
-#include "Request.h"
+#include "core/Server.h"
+#include "core/Request.h"
 #include <vector>
 
 
